@@ -247,93 +247,179 @@ function parseReadingText(text) {
   };
 }
 
-// ===== 報告合成引擎（風格：逐牌簡單介紹 → 湊出一個解答） =====
-function pick(arr, seedStr) {
-  let h = 0;
-  const s = seedStr || String(Math.random());
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return arr[h % arr.length];
+// ============================================================
+//  報告合成引擎
+//  第一段：完整描述每一張牌的牌義
+//  第二段：針對問題湊出一個綜合解答
+// ============================================================
+
+const SUIT_INFO = {
+  '大阿爾克那': { el: '', desc: '22張大牌之一，份量比小牌重，指向命運層級的人生課題' },
+  '權杖': { el: '火', desc: '行動、熱情、事業與創造力' },
+  '聖杯': { el: '水', desc: '情感、關係、直覺與內心的感受' },
+  '寶劍': { el: '風', desc: '思維、溝通、衝突與必須面對的真相' },
+  '錢幣': { el: '土', desc: '金錢、工作、健康與現實層面的安穩' },
+};
+
+const RANK_INFO = {
+  '一': '開端 —— 一股全新的能量剛出現，還是顆原始的種子',
+  '二': '平衡與選擇 —— 兩股力量正在配合，或正在拉扯',
+  '三': '成長 —— 事情開始具體展開、有了雛形',
+  '四': '穩定 —— 進入一個結構固定下來的階段',
+  '五': '動盪 —— 出現衝突、失衡或考驗',
+  '六': '調和 —— 從動盪中恢復秩序，關係重新流動',
+  '七': '考驗 —— 需要耐心、策略或堅持才過得去',
+  '八': '推進 —— 能量加速，進入實際行動',
+  '九': '接近完成 —— 只差最後一哩路',
+  '十': '極致 —— 一個循環走到盡頭，可能是圓滿，也可能是超載',
+  '侍者': '學習者 —— 新的訊息、初學的心態，躍躍欲試但還不熟練',
+  '騎士': '行動者 —— 全力投入、追著目標跑，速度快但未必穩',
+  '王后': '內化者 —— 成熟地感受與滋養，由內而外的影響力',
+  '國王': '掌握者 —— 完全駕馭這個領域，能為結果負責',
+};
+
+function majorStage(n) {
+  if (n <= 7) return '在愚者之旅的起步段：建立自我、學習跟外在世界打交道';
+  if (n <= 14) return '在愚者之旅的中段：向內探索，面對考驗、放下與轉化';
+  return '在愚者之旅的後段：突破、覺醒與整合，走向新的圓滿';
 }
 
-function cardBrief(d, role) {
-  const zh = cardZhName(d.card);
-  const o = d.upright ? '正位' : '逆位';
-  return {
-    title: `${d.card.emoji} ${zh}（${o}）`,
-    role,
-    keywords: keywordsOf(d.card, d.upright),
-    advice: adviceOf(d.card, d.upright),
-  };
+// ===== 問題主題偵測（讓綜合解答真的針對問題回答）=====
+const TOPICS = [
+  { id: 'work',   name: '工作',     kw: ['工作','職場','上班','公司','職位','老闆','同事','離職','面試','找工作','事業','升遷','轉職','業績','客戶'] },
+  { id: 'love',   name: '感情',     kw: ['桃花','戀愛','感情','喜歡','曖昧','告白','複合','分手','對象','交往','結婚','另一半','相處','喜不喜歡','在一起'] },
+  { id: 'money',  name: '財務',     kw: ['財運','金錢','投資','收入','薪水','賺','理財','存錢','買房','負債'] },
+  { id: 'choice', name: '抉擇',     kw: ['選擇','抉擇','該不該','要不要','二擇','哪一個','哪條','A還是B'] },
+  { id: 'health', name: '身心',     kw: ['健康','身體','生病','壓力','睡','焦慮','情緒'] },
+  { id: 'family', name: '家庭人際', kw: ['家人','父母','朋友','家庭','小孩','婆'] },
+  { id: 'general',name: '整體運勢', kw: [] },
+];
+function detectTopic(q) {
+  if (q) { for (const t of TOPICS) if (t.kw.some(k => q.includes(k))) return t; }
+  return TOPICS[TOPICS.length - 1];
 }
 
+const TOPIC_CLOSE = {
+  work: {
+    pos: '工作上的能量整體是順的：該爭取的可以主動出手，這段時間你的付出比較容易被看見。',
+    neg: '工作上目前阻力偏大。牌面的建議是先守成、把手上的事做穩，不要在低潮期做重大異動的決定。',
+    neu: '工作的局面還沒定型，代表你現在的選擇影響很大 —— 主動出擊或按兵不動，都會真的改變結果。',
+  },
+  love: {
+    pos: '感情的能量是流動的：對方或機會其實有在回應，剩下的是你願不願意再靠近一點。',
+    neg: '感情上目前是卡著的。牌面建議先把重心拉回自己身上 —— 你的狀態穩了，關係的品質才會跟著變。',
+    neu: '感情還在未定的階段，牌沒有給死答案，因為這件事真的取決於接下來雙方怎麼互動。',
+  },
+  money: {
+    pos: '財務的能量是往上走的：適合把握機會，但仍要照主牌提醒的方式走，別因為順就失了分寸。',
+    neg: '財務這段時間偏緊或有變數。牌面建議保守一點，先別做大動作，把現金流和風險顧好。',
+    neu: '財務局面持平，關鍵不在外部機會而在自己的習慣 —— 牌指出的那個課題，就是最有效的槓桿點。',
+  },
+  choice: {
+    pos: '這個抉擇的整體能量是正面的：不管選哪邊都有收穫，重點是選完之後不要一直回頭。',
+    neg: '兩個選項目前都帶著考驗。牌面提醒你：也許真正的問題不是「選哪一個」，而是有個前提還沒處理好。',
+    neu: '兩邊的能量勢均力敵，代表這題沒有標準答案 —— 選那條你願意承擔它代價的路。',
+  },
+  health: {
+    pos: '身心的能量正在恢復中，順著這個節奏走就好，別急著加速。',
+    neg: '牌面很明顯在提醒你該休息了 —— 這不是偷懶，是必要的維修。',
+    neu: '身心狀態還可以，但別把「還撐得住」當成「沒問題」。',
+  },
+  family: {
+    pos: '人際與家庭的能量是溫暖的，適合主動聯繫、把話講開。',
+    neg: '關係裡目前有結。牌面建議先照顧好自己的情緒，再去處理對方的 —— 順序反了會更累。',
+    neu: '關係處在中性的狀態，你怎麼開口，就決定了它往哪邊走。',
+  },
+  general: {
+    pos: '整體運勢是往上的，接下來這段時間適合主動一點。',
+    neg: '整體運勢處在需要沉潛的階段。這時候少犯錯就是賺，別急著證明什麼。',
+    neu: '整體運勢平穩，主要的變數來自你自己的選擇。',
+  },
+};
+
+// ===== 單張牌的完整解析（第一段用）=====
+function cardDetail(d, position, role) {
+  const c = d.card, zh = cardZhName(c), suit = suitOf(c), info = SUIT_INFO[suit];
+  const L = [];
+  L.push(`▸ ${position}｜${zh}（${d.upright ? '正位' : '逆位'}）`);
+  L.push(`　這個位置代表：${role}`);
+  if (suit === '大阿爾克那') {
+    L.push(`　牌組：大阿爾克那 第 ${c.n} 號（${info.desc}）`);
+    L.push(`　它${majorStage(c.n)}。`);
+  } else {
+    const rank = zh.slice(2);
+    L.push(`　牌組：${suit}（${info.el}元素）—— 對應${info.desc}`);
+    if (RANK_INFO[rank]) L.push(`　階級：${rank} = ${RANK_INFO[rank]}`);
+  }
+  L.push(`　關鍵字：${keywordsOf(c, d.upright)}`);
+  L.push(`　牌義：${meaningOf(c, d.upright)}`);
+  L.push(d.upright
+    ? '　（正位：這股能量是順著流動的，可以直接照它的方向理解。）'
+    : '　（逆位：這股能量受阻、往內收，或走向了反面 —— 要多留意它提醒的那一面。）');
+  return L.join('\n');
+}
+
+// ===== 綜合解答（第二段用）=====
 function synthesize(spreadId, draws, question) {
   const spread = SPREADS[spreadId];
-  const seed = draws.map(d => d.card.n + (d.upright ? 'u' : 'r')).join('');
+  const topic = detectTopic(question);
   const kw = i => keywordsOf(draws[i].card, draws[i].upright);
   const firstKw = i => kw(i).split('、')[0];
   const adv = i => adviceOf(draws[i].card, draws[i].upright);
-  const name = i => cardZhName(draws[i].card) + (draws[i].upright ? '（正位）' : '（逆位）');
+  const nm = i => cardZhName(draws[i].card) + (draws[i].upright ? '（正位）' : '（逆位）');
   const tone = i => toneScore(draws[i].card, draws[i].upright);
   const paras = [];
 
+  if (question) paras.push(`針對你問的「${question}」，把${draws.length}張牌湊起來看，是這樣回答的：`);
+
+  let overall;
   if (spreadId === 'timeline') {
-    paras.push(`把三張牌連起來看，能量的走向是清楚的：過去的「${name(0)}」說明這件事的根源帶著「${firstKw(0)}」的色彩；走到現在，「${name(1)}」顯示你正處在「${kw(1)}」的狀態；而未來由「${name(2)}」接手，指向「${kw(2)}」。`);
-    const t = tone(2);
-    if (toneLabel(t) === 'pos') {
-      paras.push(`整體來說，這是一組往上走的牌。${adv(2)}目前的功課是把現在這一段照顧好——${adv(1)}`);
-    } else if (toneLabel(t) === 'neg') {
-      paras.push(`未來這張牌提醒你需要多一點準備，但別緊張——塔羅指出的是「照目前慣性走」的方向，方向盤還在你手上。${adv(2)}`);
-    } else {
-      paras.push(`未來的能量還在成形，不算定局。${adv(2)}把現在做好，未來就會往你要的方向靠。`);
-    }
+    paras.push(`能量的走向很清楚。過去的「${nm(0)}」說明這件事的根源帶著「${firstKw(0)}」的色彩；走到現在，「${nm(1)}」顯示你正處在「${kw(1)}」的狀態；而未來由「${nm(2)}」接手，指向「${kw(2)}」。`);
+    paras.push(`換句話說，這是一條從「${firstKw(0)}」出發、目前卡在或享受著「${firstKw(1)}」、最後會走向「${firstKw(2)}」的線。未來那張牌不是判決書，它顯示的是「照現在的慣性走下去」會到的地方 —— 想改，就從現在這張牌指出的功課下手：${adv(1)}`);
+    overall = tone(2) * 2 + tone(1);
   } else if (spreadId === 'choice') {
-    const aScore = tone(1) + tone(2), bScore = tone(3) + tone(4);
-    paras.push(`先看你自己：「${name(0)}」顯示你在這個抉擇裡帶著「${kw(0)}」的狀態。${adv(0)}`);
-    paras.push(`選擇A這條路，過程是「${name(1)}」（${firstKw(1)}），走到最後是「${name(2)}」——${kw(2)}。選擇B則是由「${name(3)}」（${firstKw(3)}）展開，結果落在「${name(4)}」——${kw(4)}。`);
-    if (aScore - bScore >= 2) {
-      paras.push(`兩相比較，牌面明顯偏向【選擇A】：它的過程與結果能量都比較順。${adv(2)}`);
-    } else if (bScore - aScore >= 2) {
-      paras.push(`兩相比較，牌面明顯偏向【選擇B】：它的路徑能量流動得比較順。${adv(4)}`);
-    } else {
-      paras.push(`兩條路的能量其實不相上下，代表關鍵不在「哪條路對」，而在你帶著什麼心態上路。回到現況牌的提醒：${adv(0)}選那條你願意承擔它的代價、也享受它的風景的路。`);
-    }
-  } else { // triangle
-    paras.push(`這個問題的核心落在主牌「${name(0)}」——關鍵字是「${kw(0)}」。${adv(0)}`);
-    paras.push(`兩張輔助牌補上了脈絡：「${name(1)}」帶來「${firstKw(1)}」的訊息，${adv(1)}而「${name(2)}」則提醒「${firstKw(2)}」，${adv(2)}`);
-    const total = tone(0) * 2 + tone(1) + tone(2);
-    if (toneLabel(Math.round(total / 2)) === 'pos') {
-      paras.push(pick([
-        `湊起來看，這是一組偏向肯定的牌：方向是對的，帶著主牌的能量放心往前走吧。`,
-        `整體牌面是給你打氣的：能量站在你這邊，剩下的只是時間和執行。`,
-      ], seed));
-    } else if (toneLabel(Math.round(total / 2)) === 'neg') {
-      paras.push(`湊起來看，牌面提醒這件事目前阻力不小——但塔羅照出的是現在的慣性，不是判決書。先處理主牌指出的核心課題，局面就會開始鬆動。`);
-    } else {
-      paras.push(`湊起來看，這是一組「操之在己」的牌：好壞還沒定案，主牌指出的課題就是槓桿點，先動它，其他的會跟著轉。`);
-    }
+    const aS = tone(1) + tone(2), bS = tone(3) + tone(4);
+    paras.push(`先看你自己：「${nm(0)}」顯示你在這個抉擇裡帶著「${kw(0)}」的狀態。${adv(0)}這是你做決定時的底色，值得先認清。`);
+    paras.push(`選擇 A 這條路，過程是「${nm(1)}」（${firstKw(1)}），走到最後是「${nm(2)}」—— ${kw(2)}。選擇 B 則由「${nm(3)}」（${firstKw(3)}）展開，結果落在「${nm(4)}」—— ${kw(4)}。`);
+    if (aS - bS >= 2) paras.push(`兩相比較，牌面明顯偏向【選擇 A】：它的過程與結果能量都比較順。${adv(2)}`);
+    else if (bS - aS >= 2) paras.push(`兩相比較，牌面明顯偏向【選擇 B】：它的路徑流動得比較順。${adv(4)}`);
+    else paras.push(`兩條路的能量其實不相上下。這代表關鍵不在「哪條路對」，而在你帶著什麼心態上路。`);
+    overall = Math.max(aS, bS);
+  } else {
+    paras.push(`這個問題的核心落在主牌「${nm(0)}」—— 關鍵字是「${kw(0)}」。${adv(0)}`);
+    paras.push(`兩張輔助牌補上了脈絡。內在的部分，「${nm(1)}」帶來「${firstKw(1)}」的訊息：${adv(1)}外在的部分，「${nm(2)}」提醒「${firstKw(2)}」：${adv(2)}`);
+    paras.push(`三張合起來看，主牌定調，一內一外各推了一把 —— 如果只能記一件事，就記主牌那句。`);
+    overall = tone(0) * 2 + tone(1) + tone(2);
   }
+
+  const lbl = toneLabel(Math.round(overall / 2));
+  paras.push((TOPIC_CLOSE[topic.id] || TOPIC_CLOSE.general)[lbl]);
   return paras;
 }
 
-// 完整報告文字（工作台用）
+// ===== 完整報告 =====
 function buildReport({ who, question, spreadId, draws, date }) {
   const spread = SPREADS[spreadId];
+  const topic = detectTopic(question);
   const L = [];
-  L.push(`🔮 ${who ? '給 ' + who + ' 的' : ''}塔羅解讀`);
+  L.push(`🌙 ${who ? '給 ' + who + ' 的' : ''}塔羅解讀`);
   if (date) L.push(`📅 ${date}`);
   if (question) L.push(`❓ 問題：${question}`);
-  L.push(`🃏 牌陣：${spread.name}`);
+  L.push(`🃏 牌陣：${spread.name}（${spread.desc}）`);
+  L.push(`🏷 主題：${topic.name}`);
   L.push('');
-  L.push('【逐牌解析】');
+  L.push('━━━━━━━━━━━━━━━━');
+  L.push('【一、逐張牌義】');
+  L.push('');
   draws.forEach((d, i) => {
-    const b = cardBrief(d, spread.positions[i] + '・' + spread.roles[i]);
-    L.push(`▸ ${spread.positions[i]}｜${b.title}`);
-    L.push(`　關鍵字：${b.keywords}`);
-    L.push(`　${b.advice}`);
+    L.push(cardDetail(d, spread.positions[i], spread.roles[i]));
     L.push('');
   });
-  L.push('【綜合解答】');
+  L.push('━━━━━━━━━━━━━━━━');
+  L.push('【二、綜合解答】');
+  L.push('');
   synthesize(spreadId, draws, question).forEach(p => { L.push(p); L.push(''); });
+  L.push('━━━━━━━━━━━━━━━━');
   L.push('塔羅是與內心對話的鏡子，最終的答案永遠在你自己手上 ✨');
   return L.join('\n');
 }

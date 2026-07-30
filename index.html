@@ -175,13 +175,14 @@
 
   <div class="footer-note">
     塔羅是與內心對話的鏡子，最終的答案永遠在你自己手上 ✨<br>
-    <span style="font-size:10.5px;">牌圖：1909 年原版韋特塔羅（Rider–Waite–Smith，Pamela Colman Smith 繪），已進入公有領域 · 圖源 Wikimedia Commons<br>本站占卜內容僅供娛樂與自我探索參考</span><br>
+    <span style="font-size:10.5px;">為了提供解牌服務，本站會記錄抽牌的時間、牌面與連線資訊（IP／地區）。不會記錄姓名或聯絡方式。<br>牌圖：1909 年原版韋特塔羅（Rider–Waite–Smith，Pamela Colman Smith 繪），已進入公有領域 · 圖源 Wikimedia Commons<br>本站占卜內容僅供娛樂與自我探索參考</span><br>
     Moonlight Tarot · <a href="studio.html" title="解牌工作台">🗝️</a>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 <canvas id="shareCanvas" style="display:none;"></canvas>
 
+<script src="config.js"></script>
 <script src="tarot-core.js"></script>
 <script>
 // ===== 狀態 =====
@@ -347,10 +348,53 @@ function showResult() {
       </div>
     </div>`).join('');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  logToCloud();
 }
 function nowStr() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// ===== 雲端記錄（送到主人的 Google Sheet；失敗完全靜默，不影響抽牌）=====
+function visitorId() {
+  try {
+    let v = localStorage.getItem('ml_visitor');
+    if (!v) { v = 'V-' + Math.random().toString(36).slice(2, 8).toUpperCase(); localStorage.setItem('ml_visitor', v); }
+    return v;
+  } catch (e) { return 'V-NOSTORE'; }
+}
+function fetchIpInfo() {
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (!done) { done = true; resolve(v); } };
+    setTimeout(() => finish({}), 2500);
+    fetch('https://ipapi.co/json/')
+      .then(r => r.json())
+      .then(j => finish({ ip: j.ip || '', loc: [...new Set([j.city, j.region, j.country_name].filter(Boolean))].join(' ') }))
+      .catch(() => finish({}));
+  });
+}
+async function logToCloud() {
+  if (typeof CLOUD_URL === 'undefined' || !CLOUD_URL) return;
+  try {
+    const info = await fetchIpInfo();
+    const spread = SPREADS[curSpread];
+    const payload = {
+      key: CLOUD_WRITE_KEY,
+      visitor: visitorId(),
+      ip: info.ip || '',
+      loc: info.loc || '',
+      spread: spread.name,
+      spreadId: curSpread,
+      question: fullQuestion(),
+      cards: curDraws.map((d, i) => ({ pos: spread.positions[i], n: d.card.n, name: cardZhName(d.card), up: d.upright })),
+    };
+    await fetch(CLOUD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) { /* 靜默 */ }
 }
 
 // ===== 複製文字 =====

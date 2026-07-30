@@ -33,7 +33,7 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
 .orient-toggle span.on.rev { background: #f6e3e5; color: var(--danger); font-weight: 600; }
 #reportOut { min-height: 300px; font-size: 13.5px; line-height: 1.7; }
 .tab-btns { display: flex; gap: 8px; margin-bottom: 16px; }
-.tab-btns .btn { flex: 1; }
+.tab-btns .btn { flex: 1; white-space: nowrap; font-size: 13px; padding: 11px 6px; }
 .tab-btns .btn.inactive { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border-strong); }
 /* 歷史 */
 .rec-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 15px; margin-bottom: 10px; background: #fffdf8; cursor: pointer; }
@@ -48,6 +48,18 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
 .rec-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .rec-actions .btn { padding: 8px 14px; font-size: 12.5px; }
 .io-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+/* 收件匣 */
+.inbox-item { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 9px; background: #fffdf8; }
+.inbox-item.done { border-left-color: var(--success); opacity: .62; }
+.inbox-item .i-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 12px; color: var(--text-soft); }
+.inbox-item .i-vid { font-family: ui-monospace, monospace; background: var(--bg); border-radius: 4px; padding: 1px 6px; color: var(--text-muted); }
+.inbox-item .i-name { font-weight: 600; font-size: 14.5px; color: var(--text); }
+.inbox-item .i-q { font-size: 13.5px; margin-top: 4px; }
+.inbox-item .i-cards { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
+.inbox-item .i-acts { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.inbox-item .i-acts .btn { padding: 7px 12px; font-size: 12px; }
+.key-box { background: #fffdf8; border: 1px dashed var(--accent); border-radius: var(--radius); padding: 14px; }
 </style>
 </head>
 <body>
@@ -77,6 +89,7 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
 
   <div class="tab-btns">
     <button class="btn" id="tabNew">✍️ 新解讀</button>
+    <button class="btn inactive" id="tabInbox">☁️ 收件匣<span id="inboxBadge"></span></button>
     <button class="btn inactive" id="tabHistory">🗂 紀錄（<span id="recCount">0</span>）</button>
   </div>
 
@@ -117,6 +130,33 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
     </div>
   </section>
 
+  <!-- ===== 雲端收件匣 ===== -->
+  <section id="inboxPane" style="display:none;">
+    <div class="card-panel" id="keyPanel">
+      <div class="panel-title">🔑 讀取鑰匙</div>
+      <div class="text-soft" style="margin-bottom:10px;">
+        這把鑰匙<b>只存在你這台裝置</b>，不會出現在任何上傳到 GitHub 的檔案裡。<br>
+        輸入一次就好，之後這台裝置會記住。（就是 Apps Script 裡的 READ_KEY）
+      </div>
+      <div class="key-box">
+        <input type="password" id="readKeyInput" placeholder="貼上 READ_KEY">
+        <button class="btn gold big" id="saveKeyBtn" style="margin-top:10px;">存起來並連線</button>
+      </div>
+    </div>
+
+    <div class="card-panel" id="inboxPanel" style="display:none;">
+      <div class="panel-title">☁️ 雲端收件匣</div>
+      <div class="text-soft" style="margin-bottom:10px;">訪客在網站上抽的牌會自動出現在這裡</div>
+      <div class="io-row" style="margin-top:0;">
+        <button class="btn" id="refreshInboxBtn">🔄 重新整理</button>
+        <button class="btn secondary" id="toggleDoneBtn">👁 顯示已解讀</button>
+        <button class="btn secondary" id="forgetKeyBtn" style="color:var(--danger);">🔒 清除鑰匙</button>
+      </div>
+      <div id="inboxMsg" class="text-soft" style="margin-top:10px;"></div>
+      <div id="inboxList" style="margin-top:12px;"></div>
+    </div>
+  </section>
+
   <!-- ===== 紀錄 ===== -->
   <section id="historyPane" style="display:none;">
     <div class="card-panel">
@@ -137,11 +177,12 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="config.js"></script>
 <script src="tarot-core.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const LS_KEY = 'hw_tarot_records';
-const PWD = '2000';
+const PWD = (typeof STUDIO_PWD !== 'undefined') ? STUDIO_PWD : 'orangeba';
 
 function showToast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -164,14 +205,18 @@ if (sessionStorage.getItem('hw_studio') === '1') {
 }
 
 // ===== 分頁 =====
-$('tabNew').addEventListener('click', () => switchTab(true));
-$('tabHistory').addEventListener('click', () => switchTab(false));
-function switchTab(isNew) {
-  $('newPane').style.display = isNew ? 'block' : 'none';
-  $('historyPane').style.display = isNew ? 'none' : 'block';
-  $('tabNew').classList.toggle('inactive', !isNew);
-  $('tabHistory').classList.toggle('inactive', isNew);
-  if (!isNew) renderRecords();
+$('tabNew').addEventListener('click', () => switchTab('new'));
+$('tabInbox').addEventListener('click', () => switchTab('inbox'));
+$('tabHistory').addEventListener('click', () => switchTab('history'));
+function switchTab(which) {
+  $('newPane').style.display     = which === 'new' ? 'block' : 'none';
+  $('inboxPane').style.display   = which === 'inbox' ? 'block' : 'none';
+  $('historyPane').style.display = which === 'history' ? 'block' : 'none';
+  $('tabNew').classList.toggle('inactive', which !== 'new');
+  $('tabInbox').classList.toggle('inactive', which !== 'inbox');
+  $('tabHistory').classList.toggle('inactive', which !== 'history');
+  if (which === 'history') renderRecords();
+  if (which === 'inbox') { refreshKeyUI(); if (readKey()) loadInbox(); }
 }
 
 // ===== 表單 =====
@@ -352,6 +397,124 @@ function renderRecords() {
   });
 }
 $('recSearch').addEventListener('input', renderRecords);
+
+
+// ============================================================
+//  雲端收件匣
+//  READ_KEY 只存在這台裝置的 localStorage，永不進任何檔案
+// ============================================================
+const RK = 'ml_read_key';
+let inboxRows = [], showDone = false;
+
+function readKey() { try { return localStorage.getItem(RK) || ''; } catch (e) { return ''; } }
+function refreshKeyUI() {
+  const has = !!readKey();
+  const cloudReady = (typeof CLOUD_URL !== 'undefined') && !!CLOUD_URL;
+  $('keyPanel').style.display = has ? 'none' : 'block';
+  $('inboxPanel').style.display = has ? 'block' : 'none';
+  if (!cloudReady) {
+    $('keyPanel').style.display = 'block';
+    $('inboxPanel').style.display = 'none';
+    $('keyPanel').querySelector('.key-box').innerHTML =
+      '<div style="font-size:13px; color:var(--danger);">⚠️ 還沒設定後端。<br><br>' +
+      '請先照「後端設定說明.md」部署 Google Apps Script，把網址填進 <b>config.js</b> 的 CLOUD_URL，再回來這裡。</div>';
+  }
+}
+$('saveKeyBtn').addEventListener('click', () => {
+  const k = $('readKeyInput').value.trim();
+  if (!k) { showToast('請先貼上鑰匙'); return; }
+  try { localStorage.setItem(RK, k); } catch (e) {}
+  $('readKeyInput').value = '';
+  refreshKeyUI(); loadInbox();
+});
+$('forgetKeyBtn').addEventListener('click', () => {
+  if (!confirm('清除這台裝置上的讀取鑰匙？下次要重新輸入。')) return;
+  try { localStorage.removeItem(RK); } catch (e) {}
+  inboxRows = []; $('inboxList').innerHTML = '';
+  refreshKeyUI(); showToast('已清除 🔒');
+});
+$('refreshInboxBtn').addEventListener('click', loadInbox);
+$('toggleDoneBtn').addEventListener('click', () => {
+  showDone = !showDone;
+  $('toggleDoneBtn').textContent = showDone ? '👁 隱藏已解讀' : '👁 顯示已解讀';
+  renderInbox();
+});
+
+function cloudGet(params) {
+  const qs = new URLSearchParams(Object.assign({ key: readKey() }, params)).toString();
+  return fetch(CLOUD_URL + '?' + qs).then(r => r.json());
+}
+
+async function loadInbox() {
+  if (!readKey() || typeof CLOUD_URL === 'undefined' || !CLOUD_URL) return;
+  $('inboxMsg').textContent = '讀取中…';
+  try {
+    const j = await cloudGet({});
+    if (!j.ok) { $('inboxMsg').textContent = '❌ ' + (j.err === 'bad key' ? '鑰匙不對，請按「清除鑰匙」重輸入' : j.err); return; }
+    inboxRows = j.rows || [];
+    const undone = inboxRows.filter(r => !r.done).length;
+    $('inboxBadge').textContent = undone ? '（' + undone + '）' : '';
+    $('inboxMsg').textContent = '共 ' + inboxRows.length + ' 筆，未解讀 ' + undone + ' 筆';
+    renderInbox();
+  } catch (e) {
+    $('inboxMsg').textContent = '❌ 連不上後端，請檢查 config.js 的網址與 Apps Script 部署權限';
+  }
+}
+
+function renderInbox() {
+  const rows = inboxRows.filter(r => showDone || !r.done);
+  if (!rows.length) { $('inboxList').innerHTML = '<div class="text-soft" style="text-align:center;padding:22px 0;">目前沒有待解讀的紀錄 🌙</div>'; return; }
+  $('inboxList').innerHTML = rows.map(r => `
+    <div class="inbox-item ${r.done ? 'done' : ''}" data-row="${r.row}">
+      <div class="i-top">
+        <span>🕐 ${r.time}</span>
+        <span class="i-vid">${r.visitor || '—'}</span>
+        ${r.ip ? '<span>🌐 ' + r.ip + '</span>' : ''}
+        ${r.loc ? '<span>📍 ' + r.loc + '</span>' : ''}
+        ${r.done ? '<span style="margin-left:auto;color:var(--success);">' + r.done + '</span>' : ''}
+      </div>
+      <div style="margin-top:5px;">
+        <span class="i-name">${r.name || '（未命名）'}</span>
+        <span class="text-soft" style="margin-left:6px;">${r.spread || ''}</span>
+      </div>
+      <div class="i-q">❓ ${r.question || '（沒填問題）'}</div>
+      <div class="i-cards">🃏 ${r.cardsText || ''}</div>
+      <div class="i-acts">
+        <button class="btn" data-a="gen">📜 產生報告</button>
+        <button class="btn secondary" data-a="name">✏️ 補名字</button>
+        ${r.done ? '' : '<button class="btn secondary" data-a="done">✅ 標記已解讀</button>'}
+      </div>
+    </div>`).join('');
+
+  document.querySelectorAll('.inbox-item').forEach(el => {
+    const rec = inboxRows.find(r => String(r.row) === el.dataset.row);
+    el.querySelectorAll('[data-a]').forEach(btn => btn.addEventListener('click', async () => {
+      const a = btn.dataset.a;
+      if (a === 'gen') {
+        $('whoInput').value = rec.name || rec.visitor || '';
+        $('qInput').value = rec.question || '';
+        $('dateInput').value = (rec.time || '').split(' ')[0] || todayStr();
+        const sid = SPREADS[rec.spreadId] ? rec.spreadId : 'triangle';
+        $('spreadSel').value = sid;
+        if (rec.cards && rec.cards.length) {
+          curDraws = rec.cards.map(c => ({ card: TAROT_CARDS[c.n], upright: !!c.up }));
+        }
+        renderCardSelectors();
+        genReport();
+        switchTab('new');
+        showToast('報告已產生 📜 潤飾後複製回傳');
+      } else if (a === 'name') {
+        const nm = prompt('這位訪客的名字／稱呼：', rec.name || '');
+        if (nm === null) return;
+        try { await cloudGet({ action: 'name', row: rec.row, name: nm }); rec.name = nm; renderInbox(); showToast('已更新 ✏️'); }
+        catch (e) { showToast('更新失敗'); }
+      } else if (a === 'done') {
+        try { await cloudGet({ action: 'done', row: rec.row }); loadInbox(); showToast('已標記 ✅'); }
+        catch (e) { showToast('更新失敗'); }
+      }
+    }));
+  });
+}
 
 // ===== 匯出 / 匯入 =====
 $('exportBtn').addEventListener('click', () => {

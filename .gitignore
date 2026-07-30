@@ -19,6 +19,12 @@ investment*
 *token*
 secrets*
 
+# ⛔ 內部文件／後端原始碼：不對外公開架構
+*設定說明*
+*說明.md
+apps-script.gs
+*.gs
+
 # 系統雜物
 .DS_Store
 Thumbs.db

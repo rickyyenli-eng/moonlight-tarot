@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>解牌工作台 · Moonlight Tarot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>">
+<link rel="stylesheet" href="tarot.css">
+<style>
+/* 密碼閘 */
+#gate {
+  position: fixed; inset: 0; z-index: 100;
+  background: radial-gradient(ellipse at 50% 30%, var(--mystic2) 0%, var(--mystic1) 80%);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.gate-box { background: #fdf9f0; border-radius: 16px; padding: 30px 26px; width: 100%; max-width: 340px; text-align: center; }
+.gate-box h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 20px; margin-bottom: 6px; }
+#studioMain { display: none; }
+/* 表單 */
+.form-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.form-row > div { flex: 1 1 140px; }
+label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.card-select-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.card-select-row .pos { flex: 0 0 74px; font-size: 12px; color: var(--accent); font-weight: 600; }
+.card-select-row select.cardSel { flex: 1; }
+.orient-toggle {
+  flex: 0 0 auto; display: flex; border: 1px solid var(--border-strong); border-radius: 9px; overflow: hidden;
+}
+.orient-toggle span { padding: 8px 11px; font-size: 12.5px; cursor: pointer; user-select: none; color: var(--text-soft); background: var(--bg); }
+.orient-toggle span.on.up { background: #e4efe9; color: var(--success); font-weight: 600; }
+.orient-toggle span.on.rev { background: #f6e3e5; color: var(--danger); font-weight: 600; }
+#reportOut { min-height: 300px; font-size: 13.5px; line-height: 1.7; }
+.tab-btns { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab-btns .btn { flex: 1; }
+.tab-btns .btn.inactive { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border-strong); }
+/* 歷史 */
+.rec-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 15px; margin-bottom: 10px; background: #fffdf8; cursor: pointer; }
+.rec-item .r-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.rec-item .r-who { font-weight: 600; font-size: 14.5px; }
+.rec-item .r-date { font-size: 11.5px; color: var(--text-soft); margin-left: auto; }
+.rec-item .r-q { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.rec-item .r-cards { font-size: 12.5px; margin-top: 5px; }
+.rec-item .r-detail { display: none; margin-top: 10px; border-top: 1px dashed var(--border-strong); padding-top: 10px; }
+.rec-item.open .r-detail { display: block; }
+.rec-item pre { white-space: pre-wrap; font-family: inherit; font-size: 13px; background: var(--bg); border-radius: 8px; padding: 12px; }
+.rec-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.rec-actions .btn { padding: 8px 14px; font-size: 12.5px; }
+.io-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<!-- 密碼閘 -->
+<div id="gate">
+  <div class="gate-box">
+    <div style="font-size:34px; margin-bottom:8px;">🗝️</div>
+    <h2>解牌工作台</h2>
+    <div class="text-soft" style="margin-bottom:16px;">這裡是主人的私人空間</div>
+    <input type="password" id="pwdInput" placeholder="請輸入密碼" style="text-align:center;">
+    <button class="btn gold big" id="pwdBtn" style="margin-top:12px;">進入</button>
+    <div style="margin-top:14px;"><a href="index.html" class="text-soft" style="font-size:12px;">← 回抽牌頁</a></div>
+  </div>
+</div>
+
+<div class="container" id="studioMain">
+  <header class="site-header">
+    <h1>🗝️ 解牌工作台</h1>
+    <div class="subtitle">貼上抽牌結果 → 知識庫自動出報告 → 潤飾回傳</div>
+  </header>
+  <nav class="top-nav">
+    <a href="index.html">🃏 線上抽牌</a>
+    <a href="library.html">📖 牌義知識庫</a>
+    <a href="studio.html" class="active">🗝️ 工作台</a>
+  </nav>
+
+  <div class="tab-btns">
+    <button class="btn" id="tabNew">✍️ 新解讀</button>
+    <button class="btn inactive" id="tabHistory">🗂 紀錄（<span id="recCount">0</span>）</button>
+  </div>
+
+  <!-- ===== 新解讀 ===== -->
+  <section id="newPane">
+    <div class="card-panel">
+      <div class="panel-title">① 貼上妹紙傳來的文字</div>
+      <div class="text-soft" style="margin-bottom:8px;">支援站上複製的格式，也吃得下「主牌 愚者 正位 輔助牌 魔術師 逆位…」這種隨手打的</div>
+      <textarea id="pasteBox" placeholder="把 LINE / IG 收到的抽牌文字整段貼進來…"></textarea>
+      <button class="btn secondary" id="parseBtn" style="margin-top:10px;">🪄 自動解析</button>
+      <span class="text-soft" id="parseMsg" style="margin-left:8px;"></span>
+    </div>
+
+    <div class="card-panel">
+      <div class="panel-title">② 確認資料（或手動輸入）</div>
+      <div class="form-row" style="margin-top:10px;">
+        <div><label class="fl">對方名字 / 稱呼</label><input type="text" id="whoInput" placeholder="例：小美"></div>
+        <div><label class="fl">日期</label><input type="text" id="dateInput"></div>
+      </div>
+      <div class="form-row">
+        <div style="flex:2 1 220px;"><label class="fl">問題</label><input type="text" id="qInput" placeholder="她想問什麼？"></div>
+        <div><label class="fl">牌陣</label><select id="spreadSel"></select></div>
+      </div>
+      <label class="fl" style="margin-top:4px;">牌面</label>
+      <div id="cardSelectors"></div>
+      <button class="btn gold big" id="genBtn" style="margin-top:12px;">📜 產生報告草稿</button>
+    </div>
+
+    <div class="card-panel" id="reportPanel" style="display:none;">
+      <div class="panel-title">③ 報告草稿（可直接編輯潤飾）</div>
+      <div class="text-soft" style="margin-bottom:8px;">風格：逐牌簡單介紹 → 湊出一個綜合解答。改成你的口吻後複製回傳</div>
+      <textarea id="reportOut"></textarea>
+      <div class="io-row">
+        <button class="btn" id="copyReportBtn">📋 複製報告</button>
+        <button class="btn secondary" id="regenBtn">🎲 換個說法重生成</button>
+        <button class="btn gold" id="saveBtn">💾 儲存到紀錄</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 紀錄 ===== -->
+  <section id="historyPane" style="display:none;">
+    <div class="card-panel">
+      <div class="panel-title">🗂 過往解讀紀錄</div>
+      <div class="text-soft" style="margin-bottom:10px;">存在這台裝置的瀏覽器裡。換裝置前記得「匯出備份」</div>
+      <input type="text" id="recSearch" placeholder="🔍 搜尋名字、問題、牌名…">
+      <div id="recList" style="margin-top:12px;"></div>
+      <div id="recEmpty" class="text-soft" style="text-align:center; padding:24px 0;">還沒有紀錄。解完第一副牌就會出現在這裡 🌙</div>
+      <div class="io-row">
+        <button class="btn secondary" id="exportBtn">⬇️ 匯出備份 JSON</button>
+        <button class="btn secondary" id="importBtn">⬆️ 匯入備份</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;">
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-note">Moonlight Tarot · 主人限定 🗝️</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="tarot-core.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const LS_KEY = 'hw_tarot_records';
+const PWD = '2000';
+
+function showToast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ===== 密碼閘 =====
+function tryEnter() {
+  if ($('pwdInput').value === PWD) {
+    sessionStorage.setItem('hw_studio', '1');
+    $('gate').style.display = 'none';
+    $('studioMain').style.display = 'block';
+    showToast('歡迎回來，主人 🗝️');
+  } else { showToast('密碼不對喔 🙈'); $('pwdInput').value = ''; }
+}
+$('pwdBtn').addEventListener('click', tryEnter);
+$('pwdInput').addEventListener('keydown', e => { if (e.key === 'Enter') tryEnter(); });
+if (sessionStorage.getItem('hw_studio') === '1') {
+  $('gate').style.display = 'none'; $('studioMain').style.display = 'block';
+}
+
+// ===== 分頁 =====
+$('tabNew').addEventListener('click', () => switchTab(true));
+$('tabHistory').addEventListener('click', () => switchTab(false));
+function switchTab(isNew) {
+  $('newPane').style.display = isNew ? 'block' : 'none';
+  $('historyPane').style.display = isNew ? 'none' : 'block';
+  $('tabNew').classList.toggle('inactive', !isNew);
+  $('tabHistory').classList.toggle('inactive', isNew);
+  if (!isNew) renderRecords();
+}
+
+// ===== 表單 =====
+let curDraws = []; // [{card, upright}]
+function todayStr() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`;
+}
+$('dateInput').value = todayStr();
+
+function cardOptions(selN) {
+  const groups = {};
+  TAROT_CARDS.forEach(c => { const s = suitOf(c); (groups[s] = groups[s] || []).push(c); });
+  return Object.entries(groups).map(([s, cs]) =>
+    `<optgroup label="${s}">` + cs.map(c =>
+      `<option value="${c.n}" ${c.n === selN ? 'selected' : ''}>${c.emoji} ${cardZhName(c)}</option>`).join('') + '</optgroup>'
+  ).join('');
+}
+function renderSpreadSel() {
+  $('spreadSel').innerHTML = Object.values(SPREADS).map(s =>
+    `<option value="${s.id}">${s.emoji} ${s.name}（${s.count}張）</option>`).join('');
+}
+function renderCardSelectors() {
+  const spread = SPREADS[$('spreadSel').value];
+  while (curDraws.length < spread.count) curDraws.push({ card: TAROT_CARDS[0], upright: true });
+  curDraws = curDraws.slice(0, spread.count);
+  $('cardSelectors').innerHTML = spread.positions.map((pos, i) => `
+    <div class="card-select-row">
+      <span class="pos">${pos}</span>
+      <select class="cardSel" data-i="${i}">${cardOptions(curDraws[i].card.n)}</select>
+      <div class="orient-toggle" data-i="${i}">
+        <span class="up ${curDraws[i].upright ? 'on' : ''}">正位</span>
+        <span class="rev ${curDraws[i].upright ? '' : 'on'}">逆位</span>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.cardSel').forEach(sel => sel.addEventListener('change', () => {
+    curDraws[+sel.dataset.i].card = TAROT_CARDS[+sel.value];
+  }));
+  document.querySelectorAll('.orient-toggle').forEach(tg => {
+    tg.querySelector('.up').addEventListener('click', () => { curDraws[+tg.dataset.i].upright = true; renderCardSelectors(); });
+    tg.querySelector('.rev').addEventListener('click', () => { curDraws[+tg.dataset.i].upright = false; renderCardSelectors(); });
+  });
+}
+$('spreadSel') && renderSpreadSel();
+$('spreadSel').addEventListener('change', renderCardSelectors);
+renderCardSelectors();
+
+// ===== 解析貼上的文字 =====
+$('parseBtn').addEventListener('click', () => {
+  const txt = $('pasteBox').value.trim();
+  if (!txt) { showToast('先貼上文字再解析喔'); return; }
+  const r = parseReadingText(txt);
+  if (!r.draws.length) { $('parseMsg').textContent = '❌ 沒認出牌名，改用下方手動選牌吧'; return; }
+  if (r.question) $('qInput').value = r.question;
+  $('spreadSel').value = r.spreadId;
+  const need = SPREADS[r.spreadId].count;
+  curDraws = r.draws.slice(0, need).map(d => ({ card: d.card, upright: d.upright }));
+  while (curDraws.length < need) curDraws.push({ card: TAROT_CARDS[0], upright: true });
+  renderCardSelectors();
+  $('parseMsg').textContent = `✅ 認出 ${Math.min(r.draws.length, need)} 張牌${r.draws.length > need ? '（多的已略過）' : ''}，請確認下方牌面`;
+});
+
+// ===== 產生報告 =====
+function currentMeta() {
+  return {
+    who: $('whoInput').value.trim(),
+    question: $('qInput').value.trim(),
+    spreadId: $('spreadSel').value,
+    draws: curDraws,
+    date: $('dateInput').value.trim() || todayStr(),
+  };
+}
+function genReport() {
+  $('reportOut').value = buildReport(currentMeta());
+  $('reportPanel').style.display = 'block';
+  $('reportOut').style.height = 'auto';
+  $('reportOut').style.height = ($('reportOut').scrollHeight + 10) + 'px';
+  $('reportPanel').scrollIntoView({ behavior: 'smooth' });
+}
+$('genBtn').addEventListener('click', genReport);
+$('regenBtn').addEventListener('click', genReport);
+
+$('copyReportBtn').addEventListener('click', () => {
+  copyText($('reportOut').value).then(() => showToast('報告已複製 📋 回傳給她吧'))
+    .catch(() => showToast('複製失敗，請手動全選複製'));
+});
+function copyText(txt) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(txt);
+  return new Promise((res, rej) => {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy') ? res() : rej(); } catch (e) { rej(e); }
+    document.body.removeChild(ta);
+  });
+}
+
+// ===== 紀錄 =====
+function loadRecords() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch (e) { return []; } }
+function saveRecords(rs) { localStorage.setItem(LS_KEY, JSON.stringify(rs)); $('recCount').textContent = rs.length; }
+$('recCount').textContent = loadRecords().length;
+
+$('saveBtn').addEventListener('click', () => {
+  const m = currentMeta();
+  const rec = {
+    id: 'r' + Date.now(),
+    ts: Date.now(),
+    who: m.who, question: m.question, spreadId: m.spreadId, date: m.date,
+    draws: m.draws.map(d => ({ n: d.card.n, upright: d.upright })),
+    report: $('reportOut').value,
+  };
+  const rs = loadRecords(); rs.unshift(rec); saveRecords(rs);
+  showToast('已存入紀錄 💾');
+});
+
+function drawsSummary(rec) {
+  return rec.draws.map(d => {
+    const c = TAROT_CARDS[d.n];
+    return `${c.emoji}${cardZhName(c)}${d.upright ? '正' : '逆'}`;
+  }).join('　');
+}
+function renderRecords() {
+  const q = ($('recSearch').value || '').trim().toLowerCase();
+  const rs = loadRecords().filter(r => {
+    if (!q) return true;
+    const hay = (r.who + r.question + r.date + drawsSummary(r) + (r.report || '')).toLowerCase();
+    return hay.includes(q);
+  });
+  $('recEmpty').style.display = rs.length ? 'none' : 'block';
+  $('recList').innerHTML = rs.map(r => `
+    <div class="rec-item" data-id="${r.id}">
+      <div class="r-top">
+        <span class="r-who">${r.who || '（未填名字）'}</span>
+        <span class="text-soft">${SPREADS[r.spreadId] ? SPREADS[r.spreadId].name : ''}</span>
+        <span class="r-date">${r.date || ''}</span>
+      </div>
+      <div class="r-q">${r.question || '（未填問題）'}</div>
+      <div class="r-cards">${drawsSummary(r)}</div>
+      <div class="r-detail">
+        <pre>${(r.report || '').replace(/</g, '&lt;')}</pre>
+        <div class="rec-actions">
+          <button class="btn" data-act="copy">📋 複製報告</button>
+          <button class="btn secondary" data-act="load">✍️ 載入編輯</button>
+          <button class="btn secondary" data-act="del" style="color:var(--danger);">🗑 刪除</button>
+        </div>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.rec-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('[data-act]')) return;
+      el.classList.toggle('open');
+    });
+    el.querySelectorAll('[data-act]').forEach(btn => btn.addEventListener('click', () => {
+      const rs2 = loadRecords();
+      const rec = rs2.find(r => r.id === el.dataset.id);
+      if (!rec) return;
+      const act = btn.dataset.act;
+      if (act === 'copy') {
+        copyText(rec.report || '').then(() => showToast('已複製 📋'));
+      } else if (act === 'load') {
+        $('whoInput').value = rec.who || '';
+        $('qInput').value = rec.question || '';
+        $('dateInput').value = rec.date || todayStr();
+        $('spreadSel').value = rec.spreadId;
+        curDraws = rec.draws.map(d => ({ card: TAROT_CARDS[d.n], upright: d.upright }));
+        renderCardSelectors();
+        $('reportOut').value = rec.report || '';
+        $('reportPanel').style.display = 'block';
+        switchTab(true);
+        showToast('已載入，可繼續編輯 ✍️');
+      } else if (act === 'del') {
+        if (!confirm('確定刪除這筆紀錄？')) return;
+        saveRecords(rs2.filter(r => r.id !== el.dataset.id));
+        renderRecords();
+        showToast('已刪除 🗑');
+      }
+    }));
+  });
+}
+$('recSearch').addEventListener('input', renderRecords);
+
+// ===== 匯出 / 匯入 =====
+$('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ app: 'hw-tarot', exportedAt: new Date().toISOString(), records: loadRecords() }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tarot-records-' + todayStr().replace(/\//g, '') + '.json';
+  a.click();
+  showToast('備份已下載 ⬇️');
+});
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const data = JSON.parse(rd.result);
+      const incoming = Array.isArray(data) ? data : (data.records || []);
+      const rs = loadRecords();
+      const ids = new Set(rs.map(r => r.id));
+      let added = 0;
+      incoming.forEach(r => { if (r && r.id && !ids.has(r.id)) { rs.push(r); added++; } });
+      rs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      saveRecords(rs);
+      renderRecords();
+      showToast(`匯入完成，新增 ${added} 筆 ⬆️`);
+    } catch (err) { showToast('檔案格式不對 🙈'); }
+  };
+  rd.readAsText(f);
+  e.target.value = '';
+});
+</script>
+</body>
+</html>

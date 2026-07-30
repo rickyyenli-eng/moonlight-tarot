@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Moonlight Tarot 月光塔羅 · 線上抽牌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>">
+<link rel="stylesheet" href="tarot.css">
+<style>
+/* ===== 抽牌頁專屬 ===== */
+.spread-opt {
+  display: flex; gap: 12px; align-items: flex-start; cursor: pointer;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 13px 14px; margin-bottom: 9px; transition: all .2s; background: #fffdf8;
+}
+.spread-opt:hover { border-color: var(--accent); }
+.spread-opt.active { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 2px 10px rgba(200,149,109,.2); }
+.spread-opt .s-emoji { font-size: 24px; line-height: 1.2; }
+.spread-opt .s-name { font-weight: 600; font-size: 14.5px; }
+.spread-opt .s-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 1px; }
+.choice-inputs { display: none; gap: 8px; margin-top: 10px; }
+.choice-inputs.show { display: flex; }
+.blank-inputs { margin-top: 10px; display: none; }
+.blank-inputs.show { display: block; }
+.blank-inputs input { margin-bottom: 8px; }
+
+/* ===== 儀式區 ===== */
+#ritualSection { display: none; }
+.ritual-stage {
+  background: radial-gradient(ellipse at 50% 30%, var(--mystic2) 0%, var(--mystic1) 75%);
+  border-radius: 16px; padding: 26px 12px 22px; text-align: center; overflow: hidden;
+  position: relative; box-shadow: 0 8px 30px rgba(43,35,64,.35);
+}
+.ritual-hint { color: #cbbfe3; font-size: 13.5px; margin-bottom: 16px; letter-spacing: .5px; }
+.ritual-hint b { color: var(--gold); }
+/* 洗牌動畫 */
+#shuffleAnim { height: 170px; position: relative; }
+.sh-card {
+  position: absolute; left: 50%; top: 50%; width: 74px; height: 118px; margin: -59px 0 0 -37px;
+  border-radius: 8px; animation: shuffle 1.5s ease-in-out infinite;
+}
+@keyframes shuffle {
+  0%   { transform: translate(0,0) rotate(0deg); }
+  25%  { transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)) rotate(calc(var(--rot) * 1deg)); }
+  50%  { transform: translate(calc(var(--dx) * -0.6px), calc(var(--dy) * -0.8px)) rotate(calc(var(--rot) * -0.7deg)); }
+  75%  { transform: translate(calc(var(--dx) * 0.3px), calc(var(--dy) * 0.5px)) rotate(calc(var(--rot) * 0.4deg)); }
+  100% { transform: translate(0,0) rotate(0deg); }
+}
+.card-back-face {
+  background-image: radial-gradient(circle at 50% 42%, rgba(212,175,106,.18) 0%, transparent 55%),
+                    linear-gradient(150deg, #3a2f56 0%, #2b2340 55%, #241d38 100%);
+  border: 1.5px solid #6a5a92; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold); box-shadow: 0 4px 14px rgba(0,0,0,.35);
+}
+/* 扇形選牌 */
+#fanWrap { display: none; }
+#fanScroller { overflow-x: auto; padding: 26px 18px 14px; -webkit-overflow-scrolling: touch; }
+#fanRow { display: flex; width: max-content; padding: 0 10px; }
+.fan-card {
+  width: 54px; height: 88px; margin-left: -24px; flex: 0 0 auto;
+  border-radius: 6px; cursor: pointer; position: relative;
+  transition: transform .18s, box-shadow .18s; font-size: 13px;
+  align-items: flex-start; justify-content: flex-start; padding: 5px 0 0 7px;
+  border-color: #8672b5; box-shadow: -3px 0 8px rgba(0,0,0,.35);
+  transform: translateY(calc(var(--arc) * 1px)) rotate(calc(var(--tilt) * 1deg));
+}
+.fan-card:first-child { margin-left: 0; }
+.fan-card.picked {
+  transform: translateY(calc(var(--arc) * 1px - 22px)) rotate(0deg); z-index: 5;
+  box-shadow: 0 0 0 2px var(--gold), 0 10px 18px rgba(0,0,0,.45);
+}
+.fan-card .pick-no {
+  display: none; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  background: var(--gold); color: #2b2340; font-size: 11px; font-weight: 700;
+  width: 20px; height: 20px; border-radius: 50%; line-height: 20px; text-align: center;
+}
+.fan-card.picked .pick-no { display: block; }
+/* 翻牌 */
+#revealWrap { display: none; }
+#revealRow { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; padding: 8px 0 4px; }
+.flip-card { width: 96px; height: 160px; perspective: 900px; }
+.flip-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform .8s cubic-bezier(.4,.1,.2,1); }
+.flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+.flip-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 10px; }
+.flip-front { transform: rotateY(180deg); background: #1c1631; border: 1.5px solid var(--gold); overflow: hidden; }
+.flip-front img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.flip-front.rev img { transform: rotate(180deg); }
+.flip-front .f-tag {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 4px 4px;
+  background: linear-gradient(transparent, rgba(20,14,40,.92) 40%);
+  color: #f0e9db; font-size: 10.5px; line-height: 1.3; text-align: center;
+}
+.flip-front .f-tag .o-up { color: #9fd8b7; }
+.flip-front .f-tag .o-rev { color: #f0a8b0; }
+/* 結果 */
+#resultSection { display: none; }
+.result-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.result-actions .btn { flex: 1 1 140px; }
+.reading-card { display: flex; gap: 14px; align-items: flex-start; }
+.reading-card .r-img { flex: 0 0 88px; }
+.reading-card .r-img img { width: 88px; border-radius: 8px; border: 1px solid var(--border-strong); display: block; box-shadow: var(--shadow-sm); }
+.reading-card .r-img.rev img { transform: rotate(180deg); }
+.send-nudge {
+  margin-top: 14px; text-align: center; font-size: 13px; color: var(--text-muted);
+  background: #fffdf8; border: 1px dashed var(--accent); border-radius: 10px; padding: 12px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="site-header">
+    <h1>🌙 Moonlight Tarot</h1>
+    <div class="subtitle">月光塔羅 · 靜下心，讓牌與你對話</div>
+  </header>
+  <nav class="top-nav">
+    <a href="index.html" class="active">🃏 線上抽牌</a>
+    <a href="library.html">📖 牌義知識庫</a>
+  </nav>
+
+  <!-- STEP 1 牌陣 -->
+  <section class="card-panel setup-panel" id="spreadPanel">
+    <div class="panel-title">① 選擇牌陣</div>
+    <div class="text-soft" style="margin-bottom:12px;">不同的問題適合不同的牌陣</div>
+    <div id="spreadList"></div>
+    <div class="choice-inputs" id="choiceInputs">
+      <input type="text" id="choiceA" placeholder="選擇 A（例：留在現在的公司）">
+      <input type="text" id="choiceB" placeholder="選擇 B（例：接受新工作）">
+    </div>
+  </section>
+
+  <!-- STEP 2 問題 -->
+  <section class="card-panel setup-panel">
+    <div class="panel-title">② 寫下你的問題</div>
+    <div class="text-soft" style="margin-bottom:10px;">問題越具體，牌的訊息越清楚。也可以點下方模板快速套用</div>
+    <textarea id="questionInput" placeholder="例：我想要知道未來一個月的桃花狀況？"></textarea>
+    <div id="tplChips" style="margin-top:8px;"></div>
+    <div class="blank-inputs" id="blankInputs"></div>
+    <button class="btn gold big" id="startBtn" style="margin-top:16px;">🌙 靜心完畢，開始洗牌</button>
+  </section>
+
+  <!-- 儀式 -->
+  <section id="ritualSection">
+    <div class="ritual-stage">
+      <div class="ritual-hint" id="ritualHint">牌正在洗勻，深呼吸，心裡默想你的問題…</div>
+      <div id="shuffleAnim"></div>
+      <div id="fanWrap">
+        <div id="fanScroller"><div id="fanRow"></div></div>
+        <div class="text-soft" style="color:#9d8fc0; font-size:11.5px;">← 左右滑動牌串，憑直覺點選 →</div>
+        <button class="btn gold" id="flipBtn" style="margin-top:14px;" disabled>翻牌 ✨</button>
+      </div>
+      <div id="revealWrap">
+        <div id="revealRow"></div>
+        <button class="btn gold" id="showResultBtn" style="margin-top:12px; display:none;">看完整解讀 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="resultSection">
+    <div class="card-panel">
+      <div class="panel-title" id="resultTitle">🌟 你的牌面</div>
+      <div class="text-soft" id="resultMeta" style="margin-bottom:12px;"></div>
+      <div id="resultCards"></div>
+      <div class="send-nudge">🌙 牌已經替你翻開了——但牌與牌之間「湊起來」的答案，要由懂牌的人來解。<b>複製文字</b>或<b>存下牌面圖</b>，傳給幫你解牌的人 💌</div>
+      <div class="result-actions">
+        <button class="btn" id="copyBtn">📋 一鍵複製結果文字</button>
+        <button class="btn" id="imgBtn">🖼️ 下載牌面分享圖</button>
+        <button class="btn secondary" id="againBtn">🔄 再抽一次</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    塔羅是與內心對話的鏡子，最終的答案永遠在你自己手上 ✨<br>
+    Moonlight Tarot · <a href="studio.html" title="解牌工作台">🗝️</a>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<canvas id="shareCanvas" style="display:none;"></canvas>
+
+<script src="tarot-core.js"></script>
+<script>
+// ===== 狀態 =====
+let curSpread = 'triangle';
+let curDraws = [];      // [{card, upright}]
+let pickedIdx = [];     // 扇形中被點選的順序
+const $ = id => document.getElementById(id);
+
+function showToast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ===== 牌陣選擇 =====
+function renderSpreads() {
+  $('spreadList').innerHTML = Object.values(SPREADS).map(s => `
+    <div class="spread-opt ${s.id === curSpread ? 'active' : ''}" data-id="${s.id}">
+      <div class="s-emoji">${s.emoji}</div>
+      <div><div class="s-name">${s.name} · ${s.count}張</div><div class="s-desc">${s.desc}</div></div>
+    </div>`).join('');
+  document.querySelectorAll('.spread-opt').forEach(el => el.addEventListener('click', () => {
+    curSpread = el.dataset.id; renderSpreads();
+    $('choiceInputs').classList.toggle('show', curSpread === 'choice');
+  }));
+  $('choiceInputs').classList.toggle('show', curSpread === 'choice');
+}
+
+// ===== 問題模板 =====
+function renderTemplates() {
+  $('tplChips').innerHTML = TAROT_TEMPLATES.map((t, i) => `<span class="chip" data-i="${i}">${t.label}</span>`).join('');
+  document.querySelectorAll('#tplChips .chip').forEach(ch => ch.addEventListener('click', () => {
+    const t = TAROT_TEMPLATES[+ch.dataset.i];
+    if (!t.blanks.length) { $('questionInput').value = t.tpl; $('blankInputs').classList.remove('show'); return; }
+    const bi = $('blankInputs');
+    bi.innerHTML = t.blanks.map((b, j) => `<input type="text" id="blank${j}" placeholder="${b}">`).join('') +
+      `<button class="btn secondary" id="applyTpl" style="width:100%;">套用模板</button>`;
+    bi.classList.add('show');
+    $('applyTpl').addEventListener('click', () => {
+      let q = t.tpl;
+      t.blanks.forEach((b, j) => { q = q.replace('{' + j + '}', $('blank' + j).value.trim() || b); });
+      $('questionInput').value = q;
+      bi.classList.remove('show');
+      if (t.label.includes('二擇一')) { curSpread = 'choice'; renderSpreads(); }
+    });
+  }));
+}
+
+// ===== 開始儀式 =====
+$('startBtn').addEventListener('click', () => {
+  document.querySelectorAll('.setup-panel').forEach(p => p.style.display = 'none');
+  $('resultSection').style.display = 'none';
+  $('ritualSection').style.display = 'block';
+  $('fanWrap').style.display = 'none';
+  $('revealWrap').style.display = 'none';
+  $('shuffleAnim').style.display = 'block';
+  $('ritualHint').innerHTML = '牌正在洗勻，深呼吸，心裡默想你的問題…';
+  // 洗牌動畫
+  const anim = $('shuffleAnim'); anim.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const c = document.createElement('div');
+    c.className = 'sh-card card-back-face';
+    c.textContent = '✦';
+    c.style.setProperty('--dx', (Math.random() * 120 - 60).toFixed(0));
+    c.style.setProperty('--dy', (Math.random() * 60 - 30).toFixed(0));
+    c.style.setProperty('--rot', (Math.random() * 40 - 20).toFixed(0));
+    c.style.animationDelay = (i * 0.06) + 's';
+    anim.appendChild(c);
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(showFan, 2300);
+});
+
+// ===== 扇形選牌 =====
+function showFan() {
+  const need = SPREADS[curSpread].count;
+  pickedIdx = [];
+  $('shuffleAnim').style.display = 'none';
+  $('fanWrap').style.display = 'block';
+  $('ritualHint').innerHTML = `憑直覺選出 <b>${need}</b> 張牌（還差 <b id="needCount">${need}</b> 張）`;
+  const row = $('fanRow'); row.innerHTML = '';
+  for (let i = 0; i < 78; i++) {
+    const d = document.createElement('div');
+    d.className = 'fan-card card-back-face';
+    d.textContent = '✦';
+    const t = (i - 38.5) / 38.5;                 // -1 ~ 1
+    d.style.setProperty('--arc', (t * t * 26).toFixed(1)); // 弧形
+    d.style.setProperty('--tilt', (t * 7).toFixed(2));
+    d.innerHTML = '✦<span class="pick-no"></span>';
+    d.addEventListener('click', () => {
+      const at = pickedIdx.indexOf(i);
+      if (at >= 0) { pickedIdx.splice(at, 1); d.classList.remove('picked'); }
+      else if (pickedIdx.length < need) { pickedIdx.push(i); d.classList.add('picked'); }
+      // 更新編號
+      document.querySelectorAll('.fan-card').forEach((el, k) => {
+        const p = pickedIdx.indexOf(k);
+        el.querySelector('.pick-no').textContent = p >= 0 ? p + 1 : '';
+      });
+      const left = need - pickedIdx.length;
+      const nc = document.getElementById('needCount'); if (nc) nc.textContent = left;
+      $('flipBtn').disabled = left !== 0;
+      if (left === 0) $('ritualHint').innerHTML = '都選好了 ✨ 準備翻牌';
+    });
+    row.appendChild(d);
+  }
+  // 捲到中間
+  requestAnimationFrame(() => { const sc = $('fanScroller'); sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) / 2; });
+}
+
+// ===== 翻牌 =====
+$('flipBtn').addEventListener('click', () => {
+  const spread = SPREADS[curSpread];
+  curDraws = drawCards(spread.count);
+  $('fanWrap').style.display = 'none';
+  $('revealWrap').style.display = 'block';
+  $('ritualHint').innerHTML = '牌翻開了…';
+  const row = $('revealRow'); row.innerHTML = '';
+  curDraws.forEach((d, i) => {
+    const zh = cardZhName(d.card);
+    const el = document.createElement('div');
+    el.className = 'flip-card';
+    el.innerHTML = `
+      <div class="flip-inner">
+        <div class="flip-face card-back-face" style="font-size:22px;">✦</div>
+        <div class="flip-face flip-front ${d.upright ? '' : 'rev'}">
+          <img src="${cardImg(d.card.n)}" alt="${zh}">
+          <div class="f-tag">${spread.positions[i]}・${zh}<br><span class="${d.upright ? 'o-up' : 'o-rev'}">${d.upright ? '正位' : '逆位'}</span></div>
+        </div>
+      </div>`;
+    row.appendChild(el);
+    setTimeout(() => el.classList.add('flipped'), 500 + i * 650);
+  });
+  setTimeout(() => { $('showResultBtn').style.display = 'inline-flex'; }, 500 + curDraws.length * 650 + 400);
+});
+
+// ===== 結果 =====
+$('showResultBtn').addEventListener('click', showResult);
+function choiceLabels() {
+  const a = $('choiceA').value.trim(), b = $('choiceB').value.trim();
+  return (a || b) ? { a: a || '選擇A', b: b || '選擇B' } : null;
+}
+function fullQuestion() {
+  let q = $('questionInput').value.trim();
+  if (curSpread === 'choice') {
+    const cl = choiceLabels();
+    if (cl) q += (q ? '　' : '') + `（A＝${cl.a}｜B＝${cl.b}）`;
+  }
+  return q;
+}
+function showResult() {
+  const spread = SPREADS[curSpread];
+  $('ritualSection').style.display = 'none';
+  $('resultSection').style.display = 'block';
+  $('resultMeta').textContent = `${spread.name} · ${nowStr()}` + (fullQuestion() ? ` · ${fullQuestion()}` : '');
+  $('resultCards').innerHTML = curDraws.map((d, i) => `
+    <div class="reading-card">
+      <div class="r-img ${d.upright ? '' : 'rev'}"><img src="${cardImg(d.card.n)}" alt="${cardZhName(d.card)}"></div>
+      <div>
+        <div class="pos-label">${spread.positions[i].toUpperCase()} · ${spread.roles[i]}</div>
+        <div class="card-name">${cardZhName(d.card)}
+          <span class="orient ${d.upright ? 'up' : 'rev'}">${d.upright ? '正位' : '逆位'}</span></div>
+        <div class="kw">關鍵字：${keywordsOf(d.card, d.upright)}</div>
+        <div class="meaning">${meaningOf(d.card, d.upright)}</div>
+      </div>
+    </div>`).join('');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function nowStr() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// ===== 複製文字 =====
+$('copyBtn').addEventListener('click', () => {
+  const txt = buildShareText(fullQuestion(), SPREADS[curSpread], curDraws, nowStr());
+  copyText(txt).then(() => showToast('已複製 📋 貼到 LINE / IG 傳出去吧！'))
+    .catch(() => showToast('複製失敗，請截圖分享'));
+});
+function copyText(txt) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(txt);
+  return new Promise((res, rej) => {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy') ? res() : rej(); } catch (e) { rej(e); }
+    document.body.removeChild(ta);
+  });
+}
+
+// ===== 分享圖 =====
+function loadImg(src) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = src;
+  });
+}
+$('imgBtn').addEventListener('click', async () => {
+  const spread = SPREADS[curSpread];
+  const W = 1080, pad = 64;
+  const q = fullQuestion();
+  const cv = $('shareCanvas'), g = cv.getContext('2d');
+  g.font = '400 32px "DM Sans","PingFang TC",sans-serif';
+  const qLines = wrapText(g, q ? '❓ ' + q : '', W - pad * 2);
+  // 牌圖尺寸
+  const n = curDraws.length;
+  const gap = 26;
+  const cw = Math.min(200, Math.floor((W - pad * 2 - gap * (n - 1)) / n));
+  const ch = Math.round(cw * 1.71);
+  const H = 235 + qLines.length * 46 + ch + 130 + 110;
+  cv.width = W; cv.height = H;
+  // 神秘夜空背景
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#241d38'); bg.addColorStop(.55, '#2b2340'); bg.addColorStop(1, '#171226');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  // 星星
+  for (let i = 0; i < 60; i++) {
+    g.fillStyle = 'rgba(240,233,219,' + (Math.random() * .5 + .12).toFixed(2) + ')';
+    const r = Math.random() * 1.6 + .4;
+    g.beginPath(); g.arc(Math.random() * W, Math.random() * H, r, 0, 7); g.fill();
+  }
+  // 月亮光暈
+  const glow = g.createRadialGradient(W - 130, 110, 10, W - 130, 110, 180);
+  glow.addColorStop(0, 'rgba(212,175,106,.5)'); glow.addColorStop(1, 'transparent');
+  g.fillStyle = glow; g.fillRect(W - 320, 0, 320, 300);
+  g.font = '400 64px serif'; g.fillText('🌙', W - 165, 135);
+  // 標題
+  g.fillStyle = '#f0e9db';
+  g.font = '500 56px "Fraunces",Georgia,serif';
+  g.fillText('Moonlight Tarot', pad, 118);
+  g.font = '400 28px "DM Sans","PingFang TC",sans-serif';
+  g.fillStyle = '#b9a8d6';
+  g.fillText('月光塔羅 · ' + spread.name + ' · ' + nowStr(), pad, 168);
+  let y = 225;
+  g.fillStyle = '#e8dfc9'; g.font = '400 32px "DM Sans","PingFang TC",sans-serif';
+  qLines.forEach(l => { g.fillText(l, pad, y); y += 46; });
+  y += 18;
+  // 牌圖列
+  const totalW = cw * n + gap * (n - 1);
+  let x = (W - totalW) / 2;
+  let imgs = [];
+  try { imgs = await Promise.all(curDraws.map(d => loadImg(cardImg(d.card.n)))); } catch (e) { imgs = null; }
+  curDraws.forEach((d, i) => {
+    // 金框
+    g.strokeStyle = '#d4af6a'; g.lineWidth = 3;
+    g.strokeRect(x - 4, y - 4, cw + 8, ch + 8);
+    if (imgs) {
+      g.save();
+      if (!d.upright) { g.translate(x + cw / 2, y + ch / 2); g.rotate(Math.PI); g.translate(-(x + cw / 2), -(y + ch / 2)); }
+      g.drawImage(imgs[i], x, y, cw, ch);
+      g.restore();
+    } else {
+      g.fillStyle = '#1c1631'; g.fillRect(x, y, cw, ch);
+      g.font = '400 64px serif'; g.textAlign = 'center';
+      g.fillText(d.card.emoji, x + cw / 2, y + ch / 2 + 20); g.textAlign = 'left';
+    }
+    // 標籤
+    g.textAlign = 'center';
+    g.fillStyle = '#b9a8d6'; g.font = '500 22px "DM Sans","PingFang TC",sans-serif';
+    g.fillText(spread.positions[i], x + cw / 2, y + ch + 44);
+    g.fillStyle = '#f0e9db'; g.font = '600 27px "DM Sans","PingFang TC",sans-serif';
+    g.fillText(cardZhName(d.card), x + cw / 2, y + ch + 80);
+    g.fillStyle = d.upright ? '#9fd8b7' : '#f0a8b0'; g.font = '500 23px "DM Sans","PingFang TC",sans-serif';
+    g.fillText(d.upright ? '正位' : '逆位', x + cw / 2, y + ch + 112);
+    g.textAlign = 'left';
+    x += cw + gap;
+  });
+  y += ch + 150;
+  g.textAlign = 'center';
+  g.fillStyle = '#d4af6a'; g.font = '400 26px "DM Sans","PingFang TC",sans-serif';
+  g.fillText('✦ Moonlight Tarot · 月光塔羅 ✦', W / 2, y);
+  g.textAlign = 'left';
+  // 下載
+  const a = document.createElement('a');
+  a.download = 'moonlight-tarot-' + Date.now() + '.png';
+  a.href = cv.toDataURL('image/png');
+  a.click();
+  showToast('牌面圖已下載 🖼️');
+});
+function wrapText(g, text, maxW) {
+  if (!text) return [];
+  const lines = []; let cur = '';
+  for (const ch of text) {
+    if (g.measureText(cur + ch).width > maxW) { lines.push(cur); cur = ch; }
+    else cur += ch;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// ===== 再抽一次 =====
+$('againBtn').addEventListener('click', () => {
+  $('resultSection').style.display = 'none';
+  $('ritualSection').style.display = 'none';
+  $('showResultBtn').style.display = 'none';
+  document.querySelectorAll('.setup-panel').forEach(p => p.style.display = 'block');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+renderSpreads();
+renderTemplates();
+</script>
+</body>
+</html>

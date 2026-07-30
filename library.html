@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>牌義知識庫 · Moonlight Tarot 月光塔羅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>">
+<link rel="stylesheet" href="tarot.css">
+<style>
+.lib-card {
+  background: #fffdf8; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 15px 16px; margin-bottom: 10px;
+}
+.lib-card { display: flex; gap: 14px; }
+.lib-card .thumb { flex: 0 0 74px; }
+.lib-card .thumb img { width: 74px; border-radius: 6px; border: 1px solid var(--border-strong); display: block; }
+.lib-card .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.lib-card .emoji { font-size: 22px; }
+.lib-card .zh { font-size: 16.5px; font-weight: 600; }
+.lib-card .en { font-size: 12px; color: var(--text-soft); }
+.lib-card .suit-tag {
+  margin-left: auto; font-size: 11px; color: var(--accent);
+  border: 1px solid var(--accent-soft); border-radius: 99px; padding: 1px 9px;
+}
+.lib-card .m-row { display: flex; gap: 8px; margin-top: 8px; font-size: 13.5px; }
+.lib-card .m-tag { flex: 0 0 auto; font-size: 11.5px; padding: 1px 8px; border-radius: 99px; height: fit-content; margin-top: 2px; }
+.lib-card .m-tag.up { background: #e4efe9; color: var(--success); }
+.lib-card .m-tag.rev { background: #f6e3e5; color: var(--danger); }
+#emptyMsg { text-align: center; color: var(--text-soft); padding: 30px 0; display: none; }
+.count-note { font-size: 12px; color: var(--text-soft); margin: 4px 0 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="site-header">
+    <h1>📖 牌義知識庫</h1>
+    <div class="subtitle">78 張韋特塔羅 · 正逆位完整牌義</div>
+  </header>
+  <nav class="top-nav">
+    <a href="index.html">🃏 線上抽牌</a>
+    <a href="library.html" class="active">📖 牌義知識庫</a>
+  </nav>
+
+  <section class="card-panel">
+    <input type="text" id="searchBox" placeholder="🔍 搜尋牌名或關鍵字（例：戀人、桃花、豐盛…）">
+    <div style="margin-top:10px;" id="suitChips"></div>
+    <div class="count-note" id="countNote"></div>
+    <div id="libList"></div>
+    <div id="emptyMsg">找不到符合的牌 🌫️ 換個關鍵字試試</div>
+  </section>
+
+  <div class="footer-note">塔羅是與內心對話的鏡子，最終的答案永遠在你自己手上 ✨<br>Moonlight Tarot · <a href="studio.html" title="解牌工作台">🗝️</a></div>
+</div>
+
+<script src="tarot-core.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const SUITS = ['全部', '大阿爾克那', '權杖', '聖杯', '寶劍', '錢幣'];
+let curSuit = '全部', curQ = '';
+
+function renderChips() {
+  $('suitChips').innerHTML = SUITS.map(s => `<span class="chip ${s === curSuit ? 'active' : ''}" data-s="${s}">${s}</span>`).join('');
+  document.querySelectorAll('#suitChips .chip').forEach(ch => ch.addEventListener('click', () => {
+    curSuit = ch.dataset.s; renderChips(); renderList();
+  }));
+}
+function renderList() {
+  const list = TAROT_CARDS.filter(c => {
+    if (curSuit !== '全部' && suitOf(c) !== curSuit) return false;
+    if (!curQ) return true;
+    return (c.name + c.up + c.rev).toLowerCase().includes(curQ.toLowerCase());
+  });
+  $('countNote').textContent = `共 ${list.length} 張`;
+  $('emptyMsg').style.display = list.length ? 'none' : 'block';
+  $('libList').innerHTML = list.map(c => `
+    <div class="lib-card">
+      <div class="thumb"><img src="${cardImg(c.n)}" alt="${cardZhName(c)}" loading="lazy"></div>
+      <div style="flex:1;">
+      <div class="head">
+        <span class="emoji">${c.emoji}</span>
+        <span class="zh">${cardZhName(c)}</span>
+        <span class="en">${c.name.slice(cardZhName(c).length).trim()}</span>
+        <span class="suit-tag">${suitOf(c)}</span>
+      </div>
+      <div class="m-row"><span class="m-tag up">正位</span><span>${c.up}</span></div>
+      <div class="m-row"><span class="m-tag rev">逆位</span><span>${c.rev}</span></div>
+      </div>
+    </div>`).join('');
+}
+$('searchBox').addEventListener('input', e => { curQ = e.target.value.trim(); renderList(); });
+renderChips(); renderList();
+</script>
+</body>
+</html>

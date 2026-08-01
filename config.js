@@ -25,5 +25,5 @@ const STUDIO_PWD = 'orangeba';
 //      Ko-fi（走 PayPal，錢直接進你的 PayPal）：https://ko-fi.com/你的帳號
 //      綠界 ECPay 贊助連結（超商／ATM／LINE Pay）：https://p.ecpay.com.tw/XXXXXX
 //      PayPal.Me：https://paypal.me/你的帳號
-const TIP_URL = '';
+const TIP_URL = 'https://ko-fi.com/moonlighttarottw';
 const TIP_TEXT = '這次的牌如果有幫到你，可以請我喝杯咖啡 ☕';

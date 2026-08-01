@@ -182,40 +182,22 @@ function drawCards(count) {
 
 // ===== 分享文字（公開站產生 → 工作台可直接解析） =====
 function buildShareText(question, spread, draws, when) {
-  const lines = [];
-  lines.push('🌙 ' + SITE_NAME + ' · ' + SITE_NAME_ZH);
-  if (when) lines.push('📅 ' + when);
-  lines.push('❓ 問題：' + (question || '（未填寫）'));
-  lines.push('🃏 牌陣：' + spread.name);
-  draws.forEach((d, i) => {
-    lines.push(spread.positions[i] + '　' + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
-  });
-  lines.push('——請幫我解牌 🙏');
-  return lines.join('\n');
-}
-
-// ===== 給 AI 的解讀提示詞 =====
-// 重點：把「這個站自己的牌義」一起帶進去，AI 的解讀才會貼近本站的口吻，
-//       而不是憑空給一段空泛的通用內容。
-function buildAiPrompt(question, spread, draws) {
   const L = [];
-  L.push('你是一位溫暖而誠實的塔羅解讀者。請根據以下抽牌結果，為我做一次完整的解讀。');
+  L.push('🌙 ' + SITE_NAME + ' · ' + SITE_NAME_ZH);
+  if (when) L.push('📅 ' + when);
+  L.push('❓ 問題：' + (question || '（未填寫）'));
+  L.push('🃏 牌陣：' + spread.name);
   L.push('');
-  L.push('【我的問題】' + (question || '（沒有特定問題，想看看目前的整體狀態）'));
-  L.push('【牌陣】' + spread.name + '　—— ' + spread.desc);
-  L.push('');
-  L.push('【抽到的牌】');
   draws.forEach((d, i) => {
-    L.push(`${i + 1}. 位置「${spread.positions[i]}」（${spread.roles[i]}）`);
-    L.push(`   牌：${cardZhName(d.card)}　${d.upright ? '正位' : '逆位'}`);
-    L.push(`   牌義參考：${meaningOf(d.card, d.upright)}`);
+    L.push(spread.positions[i] + '　' + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
+    L.push('　' + meaningOf(d.card, d.upright));   // 簡短牌義，約 40～50 字
+    L.push('');
   });
-  L.push('');
-  L.push('【請這樣回答我】');
-  L.push('1. 先逐張說明每張牌在它所在的位置上代表什麼，講得具體一點，不要空泛。');
-  L.push('2. 最後把所有牌湊起來，針對我的問題給一個明確的整體解答與建議。');
-  L.push('3. 誠實但溫暖。如果牌面顯示阻力或警訊，直說沒關係，但要告訴我可以怎麼做。');
-  L.push('4. 請用繁體中文，總長度約 500～800 字。');
+  const base = (typeof location !== 'undefined' && location.origin)
+    ? location.origin + location.pathname.replace(/[^/]*$/, '')
+    : '';
+  if (base) L.push('🔗 78 張完整牌義：' + base + 'library.html');
+  L.push('想要更深入的個人解讀，建議尋求專業的塔羅師 🌙');
   return L.join('\n');
 }
 
@@ -242,41 +224,48 @@ const CARD_ALIASES = (() => {
   return map;
 })();
 
-function parseReadingText(text) {
+function scanCardsInLine(line, used0) {
   const found = [];
-  const used = []; // 已被占用的字元區間
+  const used = [];
   const overlaps = (s, e) => used.some(([a, b]) => s < b && e > a);
   for (const [alias, idx] of CARD_ALIASES) {
     let from = 0;
     while (true) {
-      const p = text.indexOf(alias, from);
+      const p = line.indexOf(alias, from);
       if (p < 0) break;
       from = p + 1;
       if (overlaps(p, p + alias.length)) continue;
-      // 名字後方 12 字內找正/逆位
-      const after = text.slice(p + alias.length, p + alias.length + 12);
+      const after = line.slice(p + alias.length, p + alias.length + 12);
       const m = after.match(/(正|逆)\s*位?/);
-      const upright = m ? m[1] === '正' : true;
-      // 名字前方抓標籤（主牌/輔助牌/過去/現在/未來/現況/A/B…）
-      const before = text.slice(Math.max(0, p - 14), p);
+      const before = line.slice(Math.max(0, p - 14), p);
       const lm = before.match(/(主牌|輔助牌[一二]?|過去|現在|未來|你的現況|現況|A的發展|A的結果|B的發展|B的結果|[AB])\s*[:：]?\s*$/);
       used.push([p, p + alias.length]);
-      found.push({ pos: p, card: TAROT_CARDS[idx], upright, label: lm ? lm[1] : null, hasOrient: !!m });
+      found.push({ pos: p, card: TAROT_CARDS[idx], upright: m ? m[1] === '正' : true, label: lm ? lm[1] : null });
     }
   }
   found.sort((a, b) => a.pos - b.pos);
-  // 問題行
+  return found;
+}
+
+function parseReadingText(text) {
+  const lines = text.split(/\r?\n/);
+  // 只掃「有寫正位／逆位」的行 —— 牌義說明那幾行不會有這兩個詞，就不會被誤判
+  const cardLines = lines.filter(l => /正\s*位|逆\s*位|[^\u4e00-\u9fff](正|逆)(?![\u4e00-\u9fff])/.test(l));
+  const scanTargets = cardLines.length ? cardLines : [text];
+  let draws = [];
+  scanTargets.forEach(l => { draws = draws.concat(scanCardsInLine(l)); });
+
   const qm = text.match(/(?:❓\s*)?問題\s*[:：]\s*(.+)/);
-  // 牌陣
   let spreadId = null;
   if (/時間流|過去.*現在.*未來/s.test(text)) spreadId = 'timeline';
   else if (/二擇一|A的發展|B的發展/.test(text)) spreadId = 'choice';
   else if (/聖三角|主牌/.test(text)) spreadId = 'triangle';
-  if (!spreadId) spreadId = found.length >= 5 ? 'choice' : 'triangle';
+  if (!spreadId) spreadId = draws.length >= 5 ? 'choice' : 'triangle';
+
   return {
     question: qm ? qm[1].trim() : '',
     spreadId,
-    draws: found.map(f => ({ card: f.card, upright: f.upright, label: f.label })),
+    draws: draws.map(f => ({ card: f.card, upright: f.upright, label: f.label })),
   };
 }
 

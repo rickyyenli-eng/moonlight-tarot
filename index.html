@@ -190,11 +190,11 @@
       <div class="panel-title" id="resultTitle">🌟 你的牌面</div>
       <div class="text-soft" id="resultMeta" style="margin-bottom:12px;"></div>
       <div id="resultCards"></div>
-      <div class="send-nudge">🌙 牌已經替你翻開了。想聽更完整的解讀，<b>按下面那顆「複製給 AI 解讀」</b>，貼到 ChatGPT／Claude 就會得到一份針對你這副牌的完整解說。</div>
       <div class="result-actions">
-        <button class="btn gold" id="aiBtn">🤖 複製給 AI 解讀</button>
-        <button class="btn" id="copyBtn">📋 複製牌面文字</button>
-        <button class="btn" id="imgBtn">🖼️ 下載牌面圖</button>
+        <button class="btn" id="copyBtn">📋 複製文字</button>
+        <button class="btn" id="imgBtn">🖼️ 複製圖片</button>
+      </div>
+      <div class="result-actions" style="margin-top:8px;">
         <button class="btn secondary" id="againBtn">🔄 再抽一次</button>
       </div>
       <div class="tip-box" id="tipBox">
@@ -475,14 +475,6 @@ async function logToCloud() {
   } catch (e) { /* 靜默 */ }
 }
 
-// ===== 複製給 AI 解讀 =====
-$('aiBtn').addEventListener('click', () => {
-  const txt = buildAiPrompt(fullQuestion(), SPREADS[curSpread], curDraws);
-  copyText(txt)
-    .then(() => showToast('已複製 🤖 貼到 ChatGPT／Claude 就能看完整解讀'))
-    .catch(() => showToast('複製失敗，請改用截圖'));
-});
-
 // ===== 贊助區（沒設定連結就完全不出現）=====
 function renderTip() {
   if (typeof TIP_URL === 'undefined' || !TIP_URL) return;
@@ -494,7 +486,7 @@ function renderTip() {
 // ===== 複製文字 =====
 $('copyBtn').addEventListener('click', () => {
   const txt = buildShareText(fullQuestion(), SPREADS[curSpread], curDraws, nowStr());
-  copyText(txt).then(() => showToast('已複製 📋 貼到 LINE / IG 傳出去吧！'))
+  copyText(txt).then(() => showToast('已複製 📋'))
     .catch(() => showToast('複製失敗，請截圖分享'));
 });
 function copyText(txt) {
@@ -508,7 +500,7 @@ function copyText(txt) {
   });
 }
 
-// ===== 分享圖 =====
+// ===== 牌面圖：優先複製到剪貼簿，不支援才下載 =====
 function loadImg(src) {
   return new Promise((res, rej) => {
     const im = new Image();
@@ -517,53 +509,48 @@ function loadImg(src) {
     im.src = src;
   });
 }
-$('imgBtn').addEventListener('click', async () => {
+
+async function renderShareBlob() {
   const spread = SPREADS[curSpread];
   const W = 1080, pad = 64;
   const q = fullQuestion();
   const cv = $('shareCanvas'), g = cv.getContext('2d');
   g.font = '400 32px "DM Sans","PingFang TC",sans-serif';
   const qLines = wrapText(g, q ? '❓ ' + q : '', W - pad * 2);
-  // 牌圖尺寸
-  const n = curDraws.length;
-  const gap = 26;
+  const n = curDraws.length, gap = 26;
   const cw = Math.min(200, Math.floor((W - pad * 2 - gap * (n - 1)) / n));
   const ch = Math.round(cw * 1.71);
   const H = 235 + qLines.length * 46 + ch + 130 + 110;
   cv.width = W; cv.height = H;
-  // 神秘夜空背景
+
   const bg = g.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, '#241d38'); bg.addColorStop(.55, '#2b2340'); bg.addColorStop(1, '#171226');
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  // 星星
   for (let i = 0; i < 60; i++) {
     g.fillStyle = 'rgba(240,233,219,' + (Math.random() * .5 + .12).toFixed(2) + ')';
-    const r = Math.random() * 1.6 + .4;
-    g.beginPath(); g.arc(Math.random() * W, Math.random() * H, r, 0, 7); g.fill();
+    g.beginPath(); g.arc(Math.random() * W, Math.random() * H, Math.random() * 1.6 + .4, 0, 7); g.fill();
   }
-  // 月亮光暈
   const glow = g.createRadialGradient(W - 130, 110, 10, W - 130, 110, 180);
   glow.addColorStop(0, 'rgba(212,175,106,.5)'); glow.addColorStop(1, 'transparent');
   g.fillStyle = glow; g.fillRect(W - 320, 0, 320, 300);
   g.font = '400 64px serif'; g.fillText('🌙', W - 165, 135);
-  // 標題
+
   g.fillStyle = '#f0e9db';
   g.font = '500 56px "Fraunces",Georgia,serif';
   g.fillText('Moonlight Tarot', pad, 118);
   g.font = '400 28px "DM Sans","PingFang TC",sans-serif';
   g.fillStyle = '#b9a8d6';
   g.fillText('月光塔羅 · ' + spread.name + ' · ' + nowStr(), pad, 168);
+
   let y = 225;
   g.fillStyle = '#e8dfc9'; g.font = '400 32px "DM Sans","PingFang TC",sans-serif';
   qLines.forEach(l => { g.fillText(l, pad, y); y += 46; });
   y += 18;
-  // 牌圖列
-  const totalW = cw * n + gap * (n - 1);
-  let x = (W - totalW) / 2;
-  let imgs = [];
+
+  let x = (W - (cw * n + gap * (n - 1))) / 2;
+  let imgs = null;
   try { imgs = await Promise.all(curDraws.map(d => loadImg(cardImg(d.card.n)))); } catch (e) { imgs = null; }
   curDraws.forEach((d, i) => {
-    // 金框
     g.strokeStyle = '#d4af6a'; g.lineWidth = 3;
     g.strokeRect(x - 4, y - 4, cw + 8, ch + 8);
     if (imgs) {
@@ -576,7 +563,6 @@ $('imgBtn').addEventListener('click', async () => {
       g.font = '400 64px serif'; g.textAlign = 'center';
       g.fillText(d.card.emoji, x + cw / 2, y + ch / 2 + 20); g.textAlign = 'left';
     }
-    // 標籤
     g.textAlign = 'center';
     g.fillStyle = '#b9a8d6'; g.font = '500 22px "DM Sans","PingFang TC",sans-serif';
     g.fillText(spread.positions[i], x + cw / 2, y + ch + 44);
@@ -592,13 +578,33 @@ $('imgBtn').addEventListener('click', async () => {
   g.fillStyle = '#d4af6a'; g.font = '400 26px "DM Sans","PingFang TC",sans-serif';
   g.fillText('✦ Moonlight Tarot · 月光塔羅 ✦', W / 2, y);
   g.textAlign = 'left';
-  // 下載
+
+  return new Promise(res => cv.toBlob(res, 'image/png'));
+}
+
+function downloadBlob(blob) {
   const a = document.createElement('a');
   a.download = 'moonlight-tarot-' + Date.now() + '.png';
-  a.href = cv.toDataURL('image/png');
+  a.href = URL.createObjectURL(blob);
   a.click();
-  showToast('牌面圖已下載 🖼️');
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  showToast('圖片已儲存 🖼️');
+}
+
+$('imgBtn').addEventListener('click', () => {
+  const blobPromise = renderShareBlob();
+  // Safari 需要在點擊當下就建立 ClipboardItem，所以直接把 Promise 丟進去
+  if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
+    try {
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
+        .then(() => showToast('圖片已複製 🖼️'))
+        .catch(() => blobPromise.then(downloadBlob));
+      return;
+    } catch (e) { /* 落到下面下載 */ }
+  }
+  blobPromise.then(downloadBlob);
 });
+
 function wrapText(g, text, maxW) {
   if (!text) return [];
   const lines = []; let cur = '';

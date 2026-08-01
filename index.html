@@ -126,15 +126,15 @@
     <div class="text-soft" style="margin-bottom:12px;">不同的問題適合不同的牌陣</div>
     <div id="spreadList"></div>
     <div class="choice-inputs" id="choiceInputs">
-      <input type="text" id="choiceA" placeholder="選擇 A（例：留在現在的公司）">
-      <input type="text" id="choiceB" placeholder="選擇 B（例：接受新工作）">
+      <input type="text" id="choiceA" placeholder="選擇 A（選填，例：留在現在的公司）">
+      <input type="text" id="choiceB" placeholder="選擇 B（選填，例：接受新工作）">
     </div>
   </section>
 
   <!-- STEP 2 問題 -->
   <section class="card-panel setup-panel">
     <div class="panel-title">② 寫下你的問題</div>
-    <div class="text-soft" style="margin-bottom:10px;">問題越具體，牌的訊息越清楚。也可以點下方模板快速套用</div>
+    <div class="text-soft" style="margin-bottom:10px;">不知道怎麼問？<b>直接點下面的主題就好</b>，全部都可以不用填字。</div>
     <textarea id="questionInput" placeholder="例：我想要知道未來一個月的桃花狀況？"></textarea>
     <div id="tplChips" style="margin-top:8px;"></div>
     <div class="blank-inputs" id="blankInputs"></div>
@@ -210,22 +210,46 @@ function renderSpreads() {
   $('choiceInputs').classList.toggle('show', curSpread === 'choice');
 }
 
-// ===== 問題模板 =====
+// ===== 問題模板（全部選填：點了立刻帶入通用問法，填空只是讓它更具體）=====
+let lastAutoQuestion = '';   // 記住上次自動填入的內容，使用者手改過就不再覆蓋
+let activeTpl = null;
+
+function applyTemplate(vals) {
+  if (!activeTpl) return;
+  const q = activeTpl.make(vals);
+  const box = $('questionInput');
+  // 只有在使用者沒有手動改過的情況下才覆蓋
+  if (box.value === '' || box.value === lastAutoQuestion) {
+    box.value = q;
+    lastAutoQuestion = q;
+  }
+}
+
 function renderTemplates() {
   $('tplChips').innerHTML = TAROT_TEMPLATES.map((t, i) => `<span class="chip" data-i="${i}">${t.label}</span>`).join('');
   document.querySelectorAll('#tplChips .chip').forEach(ch => ch.addEventListener('click', () => {
+    document.querySelectorAll('#tplChips .chip').forEach(c => c.classList.remove('active'));
+    ch.classList.add('active');
     const t = TAROT_TEMPLATES[+ch.dataset.i];
-    if (!t.blanks.length) { $('questionInput').value = t.tpl; $('blankInputs').classList.remove('show'); return; }
+    activeTpl = t;
+
+    // ① 先立刻帶入通用問法 —— 就算什麼都不填也一定有問題
+    applyTemplate(t.blanks.map(() => ''));
+
+    // ② 這個模板有指定牌陣就跟著切
+    if (t.spread) { curSpread = t.spread; renderSpreads(); }
+
+    // ③ 填空欄位（純選填，邊打邊更新）
     const bi = $('blankInputs');
-    bi.innerHTML = t.blanks.map((b, j) => `<input type="text" id="blank${j}" placeholder="${b}">`).join('') +
-      `<button class="btn secondary" id="applyTpl" style="width:100%;">套用模板</button>`;
+    if (!t.blanks.length) { bi.classList.remove('show'); bi.innerHTML = ''; return; }
+    bi.innerHTML =
+      '<div class="text-soft" style="margin-bottom:6px;">想更具體可以填，<b>不填也沒關係</b>：</div>' +
+      t.blanks.map((b, j) => `<input type="text" id="blank${j}" placeholder="${b}（選填）">`).join('');
     bi.classList.add('show');
-    $('applyTpl').addEventListener('click', () => {
-      let q = t.tpl;
-      t.blanks.forEach((b, j) => { q = q.replace('{' + j + '}', $('blank' + j).value.trim() || b); });
-      $('questionInput').value = q;
-      bi.classList.remove('show');
-      if (t.label.includes('二擇一')) { curSpread = 'choice'; renderSpreads(); }
+    t.blanks.forEach((b, j) => {
+      $('blank' + j).addEventListener('input', () => {
+        applyTemplate(t.blanks.map((_, k) => $('blank' + k).value.trim()));
+      });
     });
   }));
 }
@@ -355,7 +379,7 @@ function nowStr() {
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// ===== 雲端記錄（送到主人的 Google Sheet；失敗完全靜默，不影響抽牌）=====
+// ===== 紀錄同步（失敗完全靜默，不影響抽牌）=====
 function visitorId() {
   try {
     let v = localStorage.getItem('ml_visitor');

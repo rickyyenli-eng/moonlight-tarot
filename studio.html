@@ -69,7 +69,7 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
   <div class="gate-box">
     <div style="font-size:34px; margin-bottom:8px;">🗝️</div>
     <h2>解牌工作台</h2>
-    <div class="text-soft" style="margin-bottom:16px;">這裡是主人的私人空間</div>
+    <div class="text-soft" style="margin-bottom:16px;">內部使用</div>
     <input type="password" id="pwdInput" placeholder="請輸入密碼" style="text-align:center;">
     <button class="btn gold big" id="pwdBtn" style="margin-top:12px;">進入</button>
     <div style="margin-top:14px;"><a href="index.html" class="text-soft" style="font-size:12px;">← 回抽牌頁</a></div>
@@ -96,9 +96,9 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
   <!-- ===== 新解讀 ===== -->
   <section id="newPane">
     <div class="card-panel">
-      <div class="panel-title">① 貼上妹紙傳來的文字</div>
+      <div class="panel-title">① 貼上收到的抽牌文字</div>
       <div class="text-soft" style="margin-bottom:8px;">支援站上複製的格式，也吃得下「主牌 愚者 正位 輔助牌 魔術師 逆位…」這種隨手打的</div>
-      <textarea id="pasteBox" placeholder="把 LINE / IG 收到的抽牌文字整段貼進來…"></textarea>
+      <textarea id="pasteBox" placeholder="把收到的抽牌文字整段貼進來…"></textarea>
       <button class="btn secondary" id="parseBtn" style="margin-top:10px;">🪄 自動解析</button>
       <span class="text-soft" id="parseMsg" style="margin-left:8px;"></span>
     </div>
@@ -106,11 +106,11 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
     <div class="card-panel">
       <div class="panel-title">② 確認資料（或手動輸入）</div>
       <div class="form-row" style="margin-top:10px;">
-        <div><label class="fl">對方名字 / 稱呼</label><input type="text" id="whoInput" placeholder="例：小美"></div>
+        <div><label class="fl">對方名字 / 稱呼</label><input type="text" id="whoInput" placeholder="選填"></div>
         <div><label class="fl">日期</label><input type="text" id="dateInput"></div>
       </div>
       <div class="form-row">
-        <div style="flex:2 1 220px;"><label class="fl">問題</label><input type="text" id="qInput" placeholder="她想問什麼？"></div>
+        <div style="flex:2 1 220px;"><label class="fl">問題</label><input type="text" id="qInput" placeholder="對方想問什麼？"></div>
         <div><label class="fl">牌陣</label><select id="spreadSel"></select></div>
       </div>
       <label class="fl" style="margin-top:4px;">牌面</label>
@@ -173,7 +173,7 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
     </div>
   </section>
 
-  <div class="footer-note">Moonlight Tarot · 主人限定 🗝️</div>
+  <div class="footer-note">Moonlight Tarot 🗝️</div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -195,7 +195,7 @@ function tryEnter() {
     sessionStorage.setItem('hw_studio', '1');
     $('gate').style.display = 'none';
     $('studioMain').style.display = 'block';
-    showToast('歡迎回來，主人 🗝️');
+    showToast('歡迎回來 🗝️');
   } else { showToast('密碼不對喔 🙈'); $('pwdInput').value = ''; }
 }
 $('pwdBtn').addEventListener('click', tryEnter);
@@ -502,7 +502,7 @@ function renderInbox() {
         renderCardSelectors();
         genReport();
         switchTab('new');
-        showToast('報告已產生 📜 潤飾後複製回傳');
+        showToast('報告已產生 📜 潤飾後複製');
       } else if (a === 'name') {
         const nm = prompt('這位訪客的名字／稱呼：', rec.name || '');
         if (nm === null) return;

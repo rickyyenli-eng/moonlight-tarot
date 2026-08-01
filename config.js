@@ -20,7 +20,10 @@ const STUDIO_PWD = 'orangeba';
 //    這樣就算有人翻遍公開原始碼，也讀不到你的紀錄。
 
 // ④ 贊助連結（選填）。留空字串 = 網站上完全不會出現贊助區塊
-//    Buy Me a Coffee：https://www.buymeacoffee.com/你的帳號
-//    綠界 ECPay 贊助：https://p.ecpay.com.tw/XXXXXX
+//    ⚠️ Buy Me a Coffee 不支援台灣收款（它只透過 Stripe 出款，台灣不在名單內）
+//    台灣可用的：
+//      Ko-fi（走 PayPal，錢直接進你的 PayPal）：https://ko-fi.com/你的帳號
+//      綠界 ECPay 贊助連結（超商／ATM／LINE Pay）：https://p.ecpay.com.tw/XXXXXX
+//      PayPal.Me：https://paypal.me/你的帳號
 const TIP_URL = '';
 const TIP_TEXT = '這次的牌如果有幫到你，可以請我喝杯咖啡 ☕';

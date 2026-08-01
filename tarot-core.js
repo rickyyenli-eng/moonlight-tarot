@@ -185,14 +185,28 @@ function suitOf(card) {
 // ===== 語氣判斷（供綜合解答收尾與二擇一比較） =====
 const TONE_POS = ['勝利','成功','喜悅','豐盛','圓滿','好運','希望','慶祝','願望成真','幸福','和諧','轉機','自由','重生','療癒','認可','凱旋','滿足','豐收','清晰','和解','平衡','信任','發光','慷慨','走出','掙脫','覺醒','反彈','倖存','機會','美好','珍惜','心想事成','完成','榮耀'];
 const TONE_NEG = ['焦慮','失眠','心碎','失落','匱乏','衝突','魯莽','失控','僵局','拖延','恐懼','悲傷','痛苦','疲憊','壓抑','失衡','混亂','操弄','嫉妒','貪婪','停滯','束縛','孤立','逃避','困','崩','冷酷','欺','背叛','過勞','擔','沉重','不安','延誤','受挫','放棄','偏執','獨斷','失去'];
+// 前面接了否定詞就不算 —— 例如「只要不放棄就不會輸」不該被判成負面
+const NEGATORS = ['不', '別', '沒', '未', '無', '勿', '毋', '非'];
+function hitsAffirmative(text, word) {
+  let from = 0;
+  while (true) {
+    const p = text.indexOf(word, from);
+    if (p < 0) return false;
+    const prev = p > 0 ? text[p - 1] : '';
+    if (!NEGATORS.includes(prev)) return true;   // 找到一個沒被否定的就算命中
+    from = p + 1;
+  }
+}
 function toneScore(card, upright) {
   const t = meaningOf(card, upright);
   let s = 0;
-  TONE_POS.forEach(w => { if (t.includes(w)) s += 1; });
-  TONE_NEG.forEach(w => { if (t.includes(w)) s -= 1; });
+  TONE_POS.forEach(w => { if (hitsAffirmative(t, w)) s += 1; });
+  TONE_NEG.forEach(w => { if (hitsAffirmative(t, w)) s -= 1; });
   return s;
 }
 function toneLabel(s) { return s >= 2 ? 'pos' : (s <= -2 ? 'neg' : 'neu'); }
+// 牌陣整體的判定：門檻放寬到 ±1，才不會八成的結果都在打太極
+function verdictOf(total) { return total >= 1 ? 'pos' : (total <= -1 ? 'neg' : 'neu'); }
 
 // ===== 抽牌 =====
 function drawCards(count) {
@@ -430,42 +444,69 @@ function synthesize(spreadId, draws, question) {
     overall = tone(0) * 2 + tone(1) + tone(2);
   }
 
-  const lbl = toneLabel(Math.round(overall / 2));
+  const lbl = verdictOf(overall);
   paras.push((TOPIC_CLOSE[topic.id] || TOPIC_CLOSE.general)[lbl]);
   return paras;
 }
 
-// ===== 簡短總結（公開站結果頁用，約 40～50 字）=====
-// 只給一個方向感，完整的逐張解析與綜合解答留在後台
+// ===== 簡短總結（公開站結果頁用）=====
+// 誠實給出「順／中性／逆」的判斷，不粉飾；判定不順時一定附上可以做的事
 function shortSummary(spreadId, draws, question) {
   const topic = detectTopic(question);
   const kw1 = i => keywordsOf(draws[i].card, draws[i].upright).split('、')[0];
-  const nm = i => cardZhName(draws[i].card);
+  const nm = i => cardZhName(draws[i].card) + '（' + (draws[i].upright ? '正位' : '逆位') + '）';
   const tone = i => toneScore(draws[i].card, draws[i].upright);
-  let head, total;
+  let text, total, focusIdx;
 
   if (spreadId === 'timeline') {
-    head = `走向由「${nm(2)}」定調，關鍵字是「${kw1(2)}」。`;
+    text = `走向由「${nm(2)}」定調，關鍵是「${kw1(2)}」。`;
     total = tone(2) * 2 + tone(1);
+    focusIdx = 2;
   } else if (spreadId === 'choice') {
     const a = tone(1) + tone(2), b = tone(3) + tone(4);
-    head = (a - b >= 2) ? '牌面偏向【選擇 A】，那條路走起來比較順。'
-         : (b - a >= 2) ? '牌面偏向【選擇 B】，那條路走起來比較順。'
-         : '兩條路能量相當，關鍵在你帶著什麼心態上路。';
-    total = Math.max(a, b);
+    if (a - b >= 2)      { text = '兩條路比下來，牌面偏向【選擇 A】。'; focusIdx = 2; total = a; }
+    else if (b - a >= 2) { text = '兩條路比下來，牌面偏向【選擇 B】。'; focusIdx = 4; total = b; }
+    else                 { text = '兩條路的能量不相上下，牌沒有替你選邊。'; focusIdx = 0; total = Math.max(a, b); }
   } else {
-    head = `核心是「${nm(0)}」，關鍵字是「${kw1(0)}」。`;
+    text = `核心是「${nm(0)}」，關鍵是「${kw1(0)}」。`;
     total = tone(0) * 2 + tone(1) + tone(2);
+    focusIdx = 0;
   }
 
+  const lbl = verdictOf(total);
   const t = (topic.id === 'general' || spreadId === 'choice') ? '' : topic.name;
-  const tail = {
-    pos: t ? `整體能量是順的，${t}這塊可以主動一點。` : '整體能量是順的，接下來適合主動一點。',
-    neg: t ? `目前阻力偏大，${t}這塊先穩住、別急著動。` : '目前阻力偏大，先穩住、別急著動。',
-    neu: t ? `局面還沒定型，${t}的走向取決於你接下來的選擇。` : '局面還沒定型，走向取決於你接下來的選擇。',
-  }[toneLabel(Math.round(total / 2))];
 
-  return head + tail;
+  // 最需要被處理的那張牌 —— 建議就從它來
+  let worst = 0, ws = 99;
+  draws.forEach((d, i) => { const s = toneScore(d.card, d.upright); if (s < ws) { ws = s; worst = i; } });
+
+  // 主牌本身的語氣如果跟整體判定相反，要講出來，否則讀起來會自相矛盾
+  const coreT = tone(focusIdx);
+  let conn = '';
+  if (spreadId !== 'choice') {
+    if (lbl === 'pos' && coreT < 0) conn = '不過其他牌撐住了局面，';
+    else if (lbl === 'neg' && coreT > 0) conn = '但周圍的牌拉住了它，';
+  }
+
+  let label, advice;
+  if (lbl === 'pos') {
+    label = '整體偏順';
+    text += conn + (t ? `${t}這塊整體是順的，接下來適合主動一點。` : '整體是順的，接下來適合主動一點。');
+    advice = ws < 0
+      ? `唯一要留意的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
+      : adviceOf(draws[focusIdx].card, draws[focusIdx].upright);
+  } else if (lbl === 'neg') {
+    label = '整體偏逆';
+    text += conn + (t ? `${t}這塊目前阻力偏大，硬推容易受傷。` : '目前阻力偏大，硬推容易受傷。');
+    advice = `最需要處理的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright);
+  } else {
+    label = '好壞參半';
+    text += t ? `${t}的局面還沒定型，走向取決於你接下來的選擇。` : '局面還沒定型，走向取決於你接下來的選擇。';
+    advice = ws < 0
+      ? `要留意的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
+      : adviceOf(draws[focusIdx].card, draws[focusIdx].upright);
+  }
+  return { tone: lbl, label, text, advice };
 }
 
 // ===== 完整報告 =====

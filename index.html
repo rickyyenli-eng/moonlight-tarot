@@ -131,6 +131,16 @@
 .reading-card .r-img { flex: 0 0 88px; }
 .reading-card .r-img img { width: 88px; border-radius: 8px; border: 1px solid var(--border-strong); display: block; box-shadow: var(--shadow-sm); }
 .reading-card .r-img.rev img { transform: rotate(180deg); }
+.synth-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; flex-wrap: wrap; }
+.verdict { font-size: 12px; font-weight: 600; padding: 3px 12px; border-radius: 99px; }
+.verdict.pos { background: #d8ecdf; color: #23603f; }
+.verdict.neu { background: #ece3d2; color: #7a6444; }
+.verdict.neg { background: #f6dfe1; color: #8d2430; }
+.advice-line {
+  margin-top: 11px; padding: 11px 13px; background: rgba(255,253,248,.72);
+  border-left: 3px solid var(--accent); border-radius: 8px;
+  font-size: 13.5px; line-height: 1.7; color: #5c4a33;
+}
 .send-nudge {
   margin-top: 14px; text-align: center; font-size: 13px; color: var(--text-muted);
   background: #fffdf8; border: 1px dashed var(--accent); border-radius: 10px; padding: 12px;
@@ -212,9 +222,13 @@
       <div class="text-soft" id="resultMeta" style="margin-bottom:12px;"></div>
       <div id="resultCards"></div>
       <div class="synth-box">
-        <div style="font-size:12px; letter-spacing:2px; color:#8a6e4e; margin-bottom:8px;">✦ 綜合訊息 ✦</div>
+        <div class="synth-head">
+          <span style="font-size:12px; letter-spacing:2px; color:#8a6e4e;">✦ 綜合訊息 ✦</span>
+          <span class="verdict" id="verdictTag"></span>
+        </div>
         <div id="synthText" style="font-size:14.5px; line-height:1.75;"></div>
-        <div style="font-size:11.5px; color:#9a8a70; margin-top:10px;">這是一段方向性的提示。想要逐張深入的完整解讀，建議尋求專業的塔羅師 🌙</div>
+        <div class="advice-line" id="adviceText"></div>
+        <div style="font-size:11.5px; color:#9a8a70; margin-top:10px;">牌面怎麼說就怎麼寫，不修飾。想要逐張深入的完整解讀，建議尋求專業的塔羅師 🌙</div>
       </div>
       <div class="result-actions">
         <button class="btn" id="copyBtn">📋 複製文字</button>
@@ -468,7 +482,11 @@ function showResult() {
         <div class="meaning">${meaningOf(d.card, d.upright)}</div>
       </div>
     </div>`).join('');
-  $('synthText').textContent = shortSummary(curSpread, curDraws, fullQuestion());
+  const sum = shortSummary(curSpread, curDraws, fullQuestion());
+  $('verdictTag').textContent = sum.label;
+  $('verdictTag').className = 'verdict ' + sum.tone;
+  $('synthText').textContent = sum.text;
+  $('adviceText').innerHTML = '💡 <b>建議</b>　' + sum.advice;
   renderTip();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   logToCloud();

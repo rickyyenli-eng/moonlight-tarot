@@ -528,9 +528,9 @@ function showResult() {
   $('synthText').textContent = sum.text;
   $('adviceText').innerHTML = '💡 <b>建議</b>　' + sum.advice;
   resetOracle(sum.tone);
+  scheduleLog();
   renderTip();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  logToCloud();
 }
 function nowStr() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
@@ -554,10 +554,14 @@ $('oracleBtn').addEventListener('click', () => {
   $('oracleMsg').textContent = curOracle.msg;
   $('oracleInvite').style.display = 'none';
   $('oracleCard').classList.add('show');
-  logToCloud();   // 補記一次，讓紀錄帶上神諭卡
+  flushLog();     // 神諭卡抽好了，這時候才把「唯一的那一筆」送出去
 });
 
-// ===== 紀錄同步（失敗完全靜默，不影響抽牌）=====
+// ===== 紀錄同步 =====
+// 一次抽牌只會送出「一筆」。等一下下再送，讓神諭卡有機會一起帶上；
+// 使用者提早關掉頁面時，用 sendBeacon 補送。
+let logSent = false, logTimer = null, ipPromise = null;
+
 function visitorId() {
   try {
     let v = localStorage.getItem('ml_visitor');
@@ -565,6 +569,7 @@ function visitorId() {
     return v;
   } catch (e) { return 'V-NOSTORE'; }
 }
+
 function fetchIpInfo() {
   return new Promise(resolve => {
     let done = false;
@@ -576,29 +581,56 @@ function fetchIpInfo() {
       .catch(() => finish({}));
   });
 }
-async function logToCloud() {
+
+function buildLogPayload(info) {
+  const spread = SPREADS[curSpread];
+  return {
+    key: CLOUD_WRITE_KEY,
+    visitor: visitorId(),
+    ip: (info && info.ip) || '',
+    loc: (info && info.loc) || '',
+    spread: spread.name,
+    spreadId: curSpread,
+    question: fullQuestion(),
+    cards: curDraws.map((d, i) => ({ pos: spread.positions[i], n: d.card.n, name: cardZhName(d.card), up: d.upright })),
+    oracle: curOracle ? (curOracle.title + '｜' + curOracle.msg) : '',
+  };
+}
+
+function scheduleLog() {
   if (typeof CLOUD_URL === 'undefined' || !CLOUD_URL) return;
+  logSent = false;
+  clearTimeout(logTimer);
+  ipPromise = fetchIpInfo();
+  logTimer = setTimeout(flushLog, 12000);   // 12 秒後送；期間抽了神諭卡就提早送
+}
+
+async function flushLog() {
+  if (logSent || typeof CLOUD_URL === 'undefined' || !CLOUD_URL) return;
+  logSent = true;
+  clearTimeout(logTimer);
   try {
-    const info = await fetchIpInfo();
-    const spread = SPREADS[curSpread];
-    const payload = {
-      key: CLOUD_WRITE_KEY,
-      visitor: visitorId(),
-      ip: info.ip || '',
-      loc: info.loc || '',
-      spread: spread.name,
-      spreadId: curSpread,
-      question: fullQuestion(),
-      cards: curDraws.map((d, i) => ({ pos: spread.positions[i], n: d.card.n, name: cardZhName(d.card), up: d.upright })),
-      oracle: curOracle ? (curOracle.title + '｜' + curOracle.msg) : '',
-    };
+    const info = await (ipPromise || Promise.resolve({}));
     await fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(buildLogPayload(info)),
     });
   } catch (e) { /* 靜默 */ }
 }
+
+// 提早離開頁面也要留下紀錄
+function beaconLog() {
+  if (logSent || typeof CLOUD_URL === 'undefined' || !CLOUD_URL || !curDraws.length) return;
+  logSent = true;
+  clearTimeout(logTimer);
+  try {
+    const body = new Blob([JSON.stringify(buildLogPayload(null))], { type: 'text/plain;charset=utf-8' });
+    if (navigator.sendBeacon) navigator.sendBeacon(CLOUD_URL, body);
+  } catch (e) {}
+}
+window.addEventListener('pagehide', beaconLog);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') beaconLog(); });
 
 // ===== 贊助區（沒設定連結就完全不出現）=====
 function renderTip() {
@@ -743,6 +775,8 @@ function wrapText(g, text, maxW) {
 
 // ===== 再抽一次 =====
 $('againBtn').addEventListener('click', () => {
+  flushLog();                 // 上一次的紀錄先確實送出
+  curOracle = null;
   $('resultSection').style.display = 'none';
   $('ritualSection').style.display = 'none';
   $('showResultBtn').style.display = 'none';

@@ -138,6 +138,62 @@ const TAROT_TEMPLATES = [
   },
 ];
 
+// ===== 神諭卡（48 張）=====
+// 跟塔羅不同：神諭卡不預測結果，只回答「那我現在可以做什麼」
+const ORACLE_CARDS = [
+  { emoji: '🌱', title: '先做小的', msg: '不用一次翻盤。今天做一件五分鐘就能完成的小事，慣性就會開始鬆動。' },
+  { emoji: '🕰', title: '給它時間', msg: '有些事現在使不上力，不是你不夠好，是還沒到。先把日子過好。' },
+  { emoji: '🗣', title: '說出來', msg: '你以為說了會破壞什麼，其實不說才在慢慢磨損它。找一個人講。' },
+  { emoji: '🚪', title: '可以離開', msg: '忍耐不是美德。如果這裡讓你變小，離開是照顧自己，不是逃跑。' },
+  { emoji: '🤲', title: '求助不丟臉', msg: '你不是非得一個人扛。開口的那一刻，重量就少了一半。' },
+  { emoji: '🛑', title: '先停一下', msg: '現在做的決定會帶著情緒。睡一覺，明天再看同一件事。' },
+  { emoji: '💪', title: '你比想的強', msg: '回頭看你撐過的那些，這一關沒有比較難。' },
+  { emoji: '🎯', title: '選一件就好', msg: '想做的事太多會互相抵銷。挑最重要的那一件，其他先放著。' },
+  { emoji: '🌊', title: '順著走', msg: '不用每件事都要贏。這次讓一步，路反而通了。' },
+  { emoji: '🔍', title: '看清楚再動', msg: '你手上的資訊還不夠。多問一句、多查一下，再決定。' },
+  { emoji: '🍚', title: '先照顧自己', msg: '你的杯子空了。先吃飯、先睡覺，其他的明天說。' },
+  { emoji: '📝', title: '寫下來', msg: '腦子裡轉一百遍，不如寫下來一遍。寫完你會發現沒那麼大。' },
+  { emoji: '🙅', title: '學會說不', msg: '答應太多會讓你恨自己。這次練習拒絕一件事。' },
+  { emoji: '🌤', title: '壞天氣會過', msg: '現在的難受是真的，但它不是永久的。這一段會過去。' },
+  { emoji: '👣', title: '踏出第一步', msg: '想清楚了就別再想了。先動，路會在腳下出現。' },
+  { emoji: '🧹', title: '清掉舊的', msg: '空間滿了新的進不來。丟掉、退訂、封鎖，都算。' },
+  { emoji: '🫂', title: '不要孤軍', msg: '你身邊有人願意幫你，只是你還沒開口。' },
+  { emoji: '🎁', title: '你值得', msg: '不用做到完美才配得到好的。現在就可以。' },
+  { emoji: '⏳', title: '別急著要答案', msg: '有些問題現在沒有答案，是因為時間還沒把它交出來。' },
+  { emoji: '🔥', title: '把火留給重要的', msg: '你的力氣有限。別在不值得的人身上耗。' },
+  { emoji: '🪞', title: '誠實一點', msg: '你其實知道答案，只是還不想承認。' },
+  { emoji: '🌉', title: '主動修補', msg: '先開口的人不是輸家。傳一則訊息就好。' },
+  { emoji: '🎒', title: '放下一些', msg: '你扛的東西有些不是你的。問問哪些可以還回去。' },
+  { emoji: '📅', title: '訂個期限', msg: '沒有期限的猶豫會拖一輩子。給自己一個日期。' },
+  { emoji: '🌟', title: '相信直覺', msg: '你第一個閃過的念頭通常是對的。這次聽它的。' },
+  { emoji: '🧊', title: '先降溫', msg: '現在講出來的話會後悔。等情緒退潮再開口。' },
+  { emoji: '🛤', title: '換條路', msg: '同樣的方法試很多次都不通，那不是你的問題，是路的問題。' },
+  { emoji: '🌻', title: '找回快樂', msg: '想想上一次真心笑是什麼時候，去做那件事。' },
+  { emoji: '💬', title: '直接問', msg: '你在猜對方的心思，猜錯的機率很高。問清楚比較快。' },
+  { emoji: '🏃', title: '動起來', msg: '想不通的時候就去走路。身體動了，腦子才會鬆。' },
+  { emoji: '🔒', title: '設個界線', msg: '好人不等於沒有底線。把你的界線講清楚。' },
+  { emoji: '🍀', title: '給運氣機會', msg: '好事需要你出現在它會發生的地方。多出門一點。' },
+  { emoji: '📚', title: '補一課', msg: '你缺的不是勇氣，是知識。去學會那件讓你害怕的事。' },
+  { emoji: '🕊', title: '原諒自己', msg: '那件事你已經自責夠久了。放過自己吧。' },
+  { emoji: '🎨', title: '做點沒用的事', msg: '不是每件事都要有產出。去玩，那也是養分。' },
+  { emoji: '🧭', title: '回到初衷', msg: '你為什麼開始這件事？想起來，路就清楚了。' },
+  { emoji: '🪜', title: '一步一步', msg: '目標太大會讓人癱瘓。把它切成三步，先做第一步。' },
+  { emoji: '🌙', title: '好好睡覺', msg: '很多問題不是想不通，是太累了。' },
+  { emoji: '🤝', title: '找對的人問', msg: '不是所有建議都值得聽。找真正走過的人問。' },
+  { emoji: '💌', title: '表達感謝', msg: '有人默默幫了你。今天跟他說一聲。' },
+  { emoji: '🚧', title: '承認做不到', msg: '說「我需要幫忙」不會讓你變弱，會讓事情變好。' },
+  { emoji: '🎈', title: '別想太多', msg: '你擔心的九成不會發生。先過好今天。' },
+  { emoji: '🔧', title: '修好基本的', msg: '華麗的計畫撐不住鬆掉的地基。先把基本功補起來。' },
+  { emoji: '🌾', title: '耐心收成', msg: '你種下的東西正在長，只是還在土裡。別挖出來看。' },
+  { emoji: '🎭', title: '做自己就好', msg: '你在扮演別人期待的樣子，很累吧。可以停了。' },
+  { emoji: '📵', title: '離線一天', msg: '比較讓你不快樂。關掉螢幕，回到你自己的生活。' },
+  { emoji: '💡', title: '換個角度', msg: '卡住的地方換個方向看，通常不是死路。' },
+  { emoji: '🫰', title: '現在就開始', msg: '「等準備好」是永遠不會來的那一天。今天就做一點。' },
+];
+
+function drawOracle() {
+  return ORACLE_CARDS[Math.floor(Math.random() * ORACLE_CARDS.length)];
+}
 // ===== 牌陣定義 =====
 const SPREADS = {
   triangle: {
@@ -219,7 +275,7 @@ function drawCards(count) {
 }
 
 // ===== 分享文字（公開站產生 → 工作台可直接解析） =====
-function buildShareText(question, spread, draws, when) {
+function buildShareText(question, spread, draws, when, oracle) {
   const L = [];
   L.push('🌙 ' + SITE_NAME + ' · ' + SITE_NAME_ZH);
   if (when) L.push('📅 ' + when);
@@ -228,6 +284,10 @@ function buildShareText(question, spread, draws, when) {
   draws.forEach((d, i) => {
     L.push(spread.positions[i] + '　' + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
   });
+  if (oracle) {
+    L.push('');
+    L.push('🌟 神諭卡：' + oracle.title + '　' + oracle.msg);
+  }
   return L.join('\n');
 }
 

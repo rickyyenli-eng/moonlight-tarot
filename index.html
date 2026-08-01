@@ -141,6 +141,32 @@
   border-left: 3px solid var(--accent); border-radius: 8px;
   font-size: 13.5px; line-height: 1.7; color: #5c4a33;
 }
+/* 神諭卡 */
+.oracle-box { margin-top: 14px; }
+.oracle-invite {
+  text-align: center; background: #fffdf8; border: 1px dashed var(--accent);
+  border-radius: 12px; padding: 16px 14px;
+}
+.oracle-invite .o-q { font-size: 13.5px; color: var(--text-muted); margin-bottom: 11px; line-height: 1.6; }
+.oracle-invite .o-note { font-size: 11px; color: var(--text-soft); margin-top: 9px; }
+.oracle-card {
+  display: none; text-align: center; border-radius: 14px; padding: 24px 18px;
+  background: radial-gradient(ellipse at 50% 20%, #4a3868 0%, #2b2340 80%);
+  box-shadow: 0 8px 26px rgba(43,35,64,.32);
+  animation: oracleIn .7s cubic-bezier(.2,.9,.3,1.2);
+}
+.oracle-card.show { display: block; }
+@keyframes oracleIn {
+  0%   { opacity: 0; transform: scale(.82) translateY(14px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.oracle-card .o-label { font-size: 11px; letter-spacing: 3px; color: #b9a8d6; margin-bottom: 12px; }
+.oracle-card .o-emoji { font-size: 46px; line-height: 1.1; }
+.oracle-card .o-title {
+  font-family: 'Fraunces', Georgia, serif; font-size: 22px; color: var(--gold);
+  margin: 8px 0 10px; letter-spacing: 1px;
+}
+.oracle-card .o-msg { font-size: 14.5px; color: #ede6d8; line-height: 1.85; max-width: 320px; margin: 0 auto; }
 .send-nudge {
   margin-top: 14px; text-align: center; font-size: 13px; color: var(--text-muted);
   background: #fffdf8; border: 1px dashed var(--accent); border-radius: 10px; padding: 12px;
@@ -230,6 +256,20 @@
         <div class="advice-line" id="adviceText"></div>
         <div style="font-size:11.5px; color:#9a8a70; margin-top:10px;">牌面怎麼說就怎麼寫，不修飾。想要逐張深入的完整解讀，建議尋求專業的塔羅師 🌙</div>
       </div>
+      <div class="oracle-box" id="oracleBox">
+        <div class="oracle-invite" id="oracleInvite">
+          <div class="o-q" id="oracleQ"></div>
+          <button class="btn gold" id="oracleBtn">🌟 抽一張神諭卡</button>
+          <div class="o-note">神諭卡不預測結果，只回答「那我現在可以做什麼」</div>
+        </div>
+        <div class="oracle-card" id="oracleCard">
+          <div class="o-label">✦ 給你的行動指引 ✦</div>
+          <div class="o-emoji" id="oracleEmoji"></div>
+          <div class="o-title" id="oracleTitle"></div>
+          <div class="o-msg" id="oracleMsg"></div>
+        </div>
+      </div>
+
       <div class="result-actions">
         <button class="btn" id="copyBtn">📋 複製文字</button>
         <button class="btn" id="imgBtn">🖼️ 複製圖片</button>
@@ -487,6 +527,7 @@ function showResult() {
   $('verdictTag').className = 'verdict ' + sum.tone;
   $('synthText').textContent = sum.text;
   $('adviceText').innerHTML = '💡 <b>建議</b>　' + sum.advice;
+  resetOracle(sum.tone);
   renderTip();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   logToCloud();
@@ -495,6 +536,26 @@ function nowStr() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+
+// ===== 神諭卡（只能抽一次，避免變成「再抽求好結果」）=====
+let curOracle = null;
+function resetOracle(verdictTone) {
+  curOracle = null;
+  $('oracleInvite').style.display = 'block';
+  $('oracleCard').classList.remove('show');
+  $('oracleQ').textContent = verdictTone === 'neg'
+    ? '牌面看起來卡卡的。要不要抽一張神諭卡，看看現在可以做什麼？'
+    : '想要一句可以馬上執行的指引嗎？';
+}
+$('oracleBtn').addEventListener('click', () => {
+  curOracle = drawOracle();
+  $('oracleEmoji').textContent = curOracle.emoji;
+  $('oracleTitle').textContent = curOracle.title;
+  $('oracleMsg').textContent = curOracle.msg;
+  $('oracleInvite').style.display = 'none';
+  $('oracleCard').classList.add('show');
+  logToCloud();   // 補記一次，讓紀錄帶上神諭卡
+});
 
 // ===== 紀錄同步（失敗完全靜默，不影響抽牌）=====
 function visitorId() {
@@ -529,6 +590,7 @@ async function logToCloud() {
       spreadId: curSpread,
       question: fullQuestion(),
       cards: curDraws.map((d, i) => ({ pos: spread.positions[i], n: d.card.n, name: cardZhName(d.card), up: d.upright })),
+      oracle: curOracle ? (curOracle.title + '｜' + curOracle.msg) : '',
     };
     await fetch(CLOUD_URL, {
       method: 'POST',
@@ -548,7 +610,7 @@ function renderTip() {
 
 // ===== 複製文字 =====
 $('copyBtn').addEventListener('click', () => {
-  const txt = buildShareText(fullQuestion(), SPREADS[curSpread], curDraws, nowStr());
+  const txt = buildShareText(fullQuestion(), SPREADS[curSpread], curDraws, nowStr(), curOracle);
   copyText(txt).then(() => showToast('已複製 📋'))
     .catch(() => showToast('複製失敗，請截圖分享'));
 });

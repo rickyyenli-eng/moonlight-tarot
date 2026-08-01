@@ -187,17 +187,9 @@ function buildShareText(question, spread, draws, when) {
   if (when) L.push('📅 ' + when);
   L.push('❓ 問題：' + (question || '（未填寫）'));
   L.push('🃏 牌陣：' + spread.name);
-  L.push('');
   draws.forEach((d, i) => {
     L.push(spread.positions[i] + '　' + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
-    L.push('　' + meaningOf(d.card, d.upright));   // 簡短牌義，約 40～50 字
-    L.push('');
   });
-  const base = (typeof location !== 'undefined' && location.origin)
-    ? location.origin + location.pathname.replace(/[^/]*$/, '')
-    : '';
-  if (base) L.push('🔗 78 張完整牌義：' + base + 'library.html');
-  L.push('想要更深入的個人解讀，建議尋求專業的塔羅師 🌙');
   return L.join('\n');
 }
 
@@ -417,6 +409,39 @@ function synthesize(spreadId, draws, question) {
   const lbl = toneLabel(Math.round(overall / 2));
   paras.push((TOPIC_CLOSE[topic.id] || TOPIC_CLOSE.general)[lbl]);
   return paras;
+}
+
+// ===== 簡短總結（公開站結果頁用，約 40～50 字）=====
+// 只給一個方向感，完整的逐張解析與綜合解答留在後台
+function shortSummary(spreadId, draws, question) {
+  const topic = detectTopic(question);
+  const kw1 = i => keywordsOf(draws[i].card, draws[i].upright).split('、')[0];
+  const nm = i => cardZhName(draws[i].card);
+  const tone = i => toneScore(draws[i].card, draws[i].upright);
+  let head, total;
+
+  if (spreadId === 'timeline') {
+    head = `走向由「${nm(2)}」定調，關鍵字是「${kw1(2)}」。`;
+    total = tone(2) * 2 + tone(1);
+  } else if (spreadId === 'choice') {
+    const a = tone(1) + tone(2), b = tone(3) + tone(4);
+    head = (a - b >= 2) ? '牌面偏向【選擇 A】，那條路走起來比較順。'
+         : (b - a >= 2) ? '牌面偏向【選擇 B】，那條路走起來比較順。'
+         : '兩條路能量相當，關鍵在你帶著什麼心態上路。';
+    total = Math.max(a, b);
+  } else {
+    head = `核心是「${nm(0)}」，關鍵字是「${kw1(0)}」。`;
+    total = tone(0) * 2 + tone(1) + tone(2);
+  }
+
+  const t = (topic.id === 'general' || spreadId === 'choice') ? '' : topic.name;
+  const tail = {
+    pos: t ? `整體能量是順的，${t}這塊可以主動一點。` : '整體能量是順的，接下來適合主動一點。',
+    neg: t ? `目前阻力偏大，${t}這塊先穩住、別急著動。` : '目前阻力偏大，先穩住、別急著動。',
+    neu: t ? `局面還沒定型，${t}的走向取決於你接下來的選擇。` : '局面還沒定型，走向取決於你接下來的選擇。',
+  }[toneLabel(Math.round(total / 2))];
+
+  return head + tail;
 }
 
 // ===== 完整報告 =====

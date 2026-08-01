@@ -25,8 +25,6 @@
 .detail-box.show { display: block; }
 .detail-box input { margin-bottom: 8px; background: #fff; }
 .detail-box input:last-child { margin-bottom: 0; }
-#choiceInputs { display: none; }
-#choiceInputs.show { display: block; }
 .tpl-status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; font-size: 12.5px; min-height: 20px; }
 .tpl-ok { color: var(--success); font-weight: 500; }
 .more-link { color: var(--text-soft); cursor: pointer; user-select: none; border-bottom: 1px dotted var(--text-soft); }
@@ -85,6 +83,29 @@
   width: 20px; height: 20px; border-radius: 50%; line-height: 20px; text-align: center;
 }
 .fan-card.picked .pick-no { display: block; }
+.hint-desktop { display: none; }
+/* 桌機／平板：把 78 張全部攤開成多排，不用左右滑 */
+@media (min-width: 760px) {
+  .hint-mobile { display: none; }
+  .hint-desktop { display: inline; }
+  #fanScroller { overflow-x: visible; padding: 20px 14px 12px; }
+  #fanRow {
+    /* 43×13 + 6×12 = 631 → 剛好每排 13 張，78 張排成整齊的 6 排 */
+    flex-wrap: wrap; width: auto; max-width: 631px; margin: 0 auto;
+    justify-content: flex-start; gap: 6px; padding: 0;
+  }
+  .fan-card {
+    width: 43px; height: 70px; margin-left: 0; font-size: 10px;
+    padding: 4px 0 0 5px;
+    transform: none; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  .fan-card:hover {
+    transform: translateY(-7px);
+    box-shadow: 0 0 0 1px var(--gold), 0 8px 16px rgba(0,0,0,.45);
+  }
+  .fan-card.picked { transform: translateY(-9px); }
+  .fan-card .pick-no { top: -8px; width: 18px; height: 18px; line-height: 18px; font-size: 10px; }
+}
 /* 翻牌 */
 #revealWrap { display: none; }
 #revealRow { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; padding: 8px 0 4px; }
@@ -158,11 +179,8 @@
     <textarea id="questionInput" placeholder="點上面的主題會自動幫你填，也可以自己寫"></textarea>
     <div class="tpl-status" id="tplStatus"></div>
     <div class="detail-box" id="detailBox">
+      <div class="text-soft" style="margin-bottom:8px;">想更貼近你的狀況可以填，<b>不填也沒關係</b></div>
       <div id="blankInputs"></div>
-      <div id="choiceInputs">
-        <input type="text" id="choiceA" placeholder="選擇 A，例：留在現在的公司">
-        <input type="text" id="choiceB" placeholder="選擇 B，例：接受新工作">
-      </div>
     </div>
     <button class="btn gold big" id="startBtn" style="margin-top:16px;">🌙 靜心完畢，開始洗牌</button>
   </section>
@@ -174,7 +192,10 @@
       <div id="shuffleAnim"></div>
       <div id="fanWrap">
         <div id="fanScroller"><div id="fanRow"></div></div>
-        <div class="text-soft" style="color:#9d8fc0; font-size:11.5px;">← 左右滑動牌串，憑直覺點選 →</div>
+        <div class="text-soft fan-hint" style="color:#9d8fc0; font-size:11.5px;">
+          <span class="hint-mobile">← 左右滑動牌串，憑直覺點選 →</span>
+          <span class="hint-desktop">78 張都在這裡，憑直覺點選你的牌</span>
+        </div>
         <button class="btn gold" id="flipBtn" style="margin-top:14px;" disabled>翻牌 ✨</button>
       </div>
       <div id="revealWrap">
@@ -240,19 +261,42 @@ function renderSpreads() {
       <div class="s-emoji">${s.emoji}</div>
       <div><div class="s-name">${s.name} · ${s.count}張</div><div class="s-desc">${s.desc}</div></div>
     </div>`).join('');
-  document.querySelectorAll('.spread-opt').forEach(el => el.addEventListener('click', () => {
-    curSpread = el.dataset.id;
-    renderSpreads();
-    updateStatus();
-  }));
-  $('choiceInputs').classList.toggle('show', curSpread === 'choice');
+  document.querySelectorAll('.spread-opt').forEach(el => el.addEventListener('click', () => onPickSpread(el.dataset.id)));
+}
+
+function onPickSpread(id) {
+  if (id === curSpread) return;
+  curSpread = id;
+  const box = $('questionInput');
+  const autoFilled = (box.value === '' || box.value === lastAutoQuestion);
+
+  // 換牌陣之後，原本的主題如果不再適用就清掉
+  if (activeTpl && !templateFitsSpread(activeTpl)) {
+    if (autoFilled) { box.value = ''; lastAutoQuestion = ''; }
+    activeTpl = null;
+    detailOpen = false;
+    $('blankInputs').innerHTML = '';
+  }
+  renderSpreads();
+  renderTemplates();
+  // 二擇一底下只有一個主題，直接幫他選好
+  if (curSpread === 'choice' && !activeTpl && autoFilled) {
+    const only = TAROT_TEMPLATES.findIndex(t => t.spread === 'choice');
+    if (only >= 0) selectTemplate(only);
+  }
+  updateStatus();
 }
 
 // ===== 問題模板 =====
-// 原則：點一下主題就完成了。所有填空預設「看不到」，想補充才自己展開。
+// 原則：點一下主題就完成了。細節欄預設看不到，想補充才自己展開。
 let lastAutoQuestion = '';
 let activeTpl = null;
 let detailOpen = false;
+
+// 二擇一牌陣只配二擇一主題；其他牌陣則不出現二擇一
+function templateFitsSpread(t) {
+  return curSpread === 'choice' ? t.spread === 'choice' : t.spread !== 'choice';
+}
 
 function applyTemplate(vals) {
   if (!activeTpl) return;
@@ -266,11 +310,10 @@ function applyTemplate(vals) {
 }
 
 function hasDetails() {
-  return (activeTpl && activeTpl.blanks.length > 0) || curSpread === 'choice';
+  return !!(activeTpl && activeTpl.blanks.length > 0);
 }
 
 function updateStatus() {
-  $('choiceInputs').classList.toggle('show', curSpread === 'choice');
   const filled = $('questionInput').value.trim().length > 0;
   const parts = [];
   if (filled) parts.push('<span class="tpl-ok">✓ 問題已填好，直接開始抽牌就可以了</span>');
@@ -285,30 +328,35 @@ function updateStatus() {
   if (ml) ml.addEventListener('click', () => { detailOpen = !detailOpen; updateStatus(); });
 }
 
-function renderTemplates() {
-  $('tplChips').innerHTML = TAROT_TEMPLATES.map((t, i) => `<span class="chip" data-i="${i}">${t.label}</span>`).join('');
-  document.querySelectorAll('#tplChips .chip').forEach(ch => ch.addEventListener('click', () => {
-    document.querySelectorAll('#tplChips .chip').forEach(c => c.classList.remove('active'));
-    ch.classList.add('active');
-    const t = TAROT_TEMPLATES[+ch.dataset.i];
-    activeTpl = t;
-    detailOpen = false;                       // 換主題一律收起來
+function selectTemplate(idx) {
+  const t = TAROT_TEMPLATES[idx];
+  if (!t) return;
+  activeTpl = t;
+  detailOpen = false;
 
-    if (t.spread) { curSpread = t.spread; renderSpreads(); }
+  if (t.spread && t.spread !== curSpread) { curSpread = t.spread; renderSpreads(); renderTemplates(); }
 
-    // 準備填空欄位（先放好，但不顯示）
-    const bi = $('blankInputs');
-    bi.innerHTML = t.blanks.length
-      ? t.blanks.map((b, j) => `<input type="text" id="blank${j}" placeholder="${b}">`).join('')
-      : '';
-    t.blanks.forEach((b, j) => {
-      $('blank' + j).addEventListener('input', () => {
-        applyTemplate(t.blanks.map((_, k) => $('blank' + k).value.trim()));
-      });
+  document.querySelectorAll('#tplChips .chip').forEach(c =>
+    c.classList.toggle('active', +c.dataset.i === idx));
+
+  // 細節欄先準備好，但不顯示
+  const bi = $('blankInputs');
+  bi.innerHTML = t.blanks.map((b, j) => `<input type="text" id="blank${j}" placeholder="${b}">`).join('');
+  t.blanks.forEach((b, j) => {
+    $('blank' + j).addEventListener('input', () => {
+      applyTemplate(t.blanks.map((_, k) => $('blank' + k).value.trim()));
     });
+  });
 
-    applyTemplate(t.blanks.map(() => ''));    // 立刻帶入通用問法
-  }));
+  applyTemplate(t.blanks.map(() => ''));   // 立刻帶入通用問法
+}
+
+function renderTemplates() {
+  const list = TAROT_TEMPLATES.map((t, i) => ({ t, i })).filter(({ t }) => templateFitsSpread(t));
+  $('tplChips').innerHTML = list.map(({ t, i }) =>
+    `<span class="chip ${activeTpl === t ? 'active' : ''}" data-i="${i}">${t.label}</span>`).join('');
+  document.querySelectorAll('#tplChips .chip').forEach(ch =>
+    ch.addEventListener('click', () => selectTemplate(+ch.dataset.i)));
 }
 $('questionInput').addEventListener('input', updateStatus);
 
@@ -401,17 +449,8 @@ $('flipBtn').addEventListener('click', () => {
 
 // ===== 結果 =====
 $('showResultBtn').addEventListener('click', showResult);
-function choiceLabels() {
-  const a = $('choiceA').value.trim(), b = $('choiceB').value.trim();
-  return (a || b) ? { a: a || '選擇A', b: b || '選擇B' } : null;
-}
 function fullQuestion() {
-  let q = $('questionInput').value.trim();
-  if (curSpread === 'choice') {
-    const cl = choiceLabels();
-    if (cl) q += (q ? '　' : '') + `（A＝${cl.a}｜B＝${cl.b}）`;
-  }
-  return q;
+  return $('questionInput').value.trim();
 }
 function showResult() {
   const spread = SPREADS[curSpread];

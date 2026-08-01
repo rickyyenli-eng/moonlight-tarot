@@ -114,6 +114,21 @@
   margin-top: 14px; text-align: center; font-size: 13px; color: var(--text-muted);
   background: #fffdf8; border: 1px dashed var(--accent); border-radius: 10px; padding: 12px;
 }
+/* 贊助區：低調、不擋路 */
+.tip-box {
+  display: none; margin-top: 16px; text-align: center;
+  background: linear-gradient(135deg, #f5ede0 0%, #ebd9c2 100%);
+  border-radius: 12px; padding: 18px 16px;
+}
+.tip-box.show { display: block; }
+.tip-box .tip-msg { font-size: 13px; color: #6b5b45; margin-bottom: 11px; line-height: 1.6; }
+.tip-box a.tip-btn {
+  display: inline-block; text-decoration: none;
+  background: #2b2340; color: #f0e9db; font-size: 13.5px; font-weight: 500;
+  padding: 10px 22px; border-radius: 99px; transition: all .2s;
+}
+.tip-box a.tip-btn:hover { background: #4a3868; }
+.tip-box .tip-note { font-size: 11px; color: #9a8a70; margin-top: 9px; }
 </style>
 </head>
 <body>
@@ -175,11 +190,17 @@
       <div class="panel-title" id="resultTitle">🌟 你的牌面</div>
       <div class="text-soft" id="resultMeta" style="margin-bottom:12px;"></div>
       <div id="resultCards"></div>
-      <div class="send-nudge">🌙 牌已經替你翻開了——但牌與牌之間「湊起來」的答案，要由懂牌的人來解。<b>複製文字</b>或<b>存下牌面圖</b>，傳給幫你解牌的人 💌</div>
+      <div class="send-nudge">🌙 牌已經替你翻開了。想聽更完整的解讀，<b>按下面那顆「複製給 AI 解讀」</b>，貼到 ChatGPT／Claude 就會得到一份針對你這副牌的完整解說。</div>
       <div class="result-actions">
-        <button class="btn" id="copyBtn">📋 一鍵複製結果文字</button>
-        <button class="btn" id="imgBtn">🖼️ 下載牌面分享圖</button>
+        <button class="btn gold" id="aiBtn">🤖 複製給 AI 解讀</button>
+        <button class="btn" id="copyBtn">📋 複製牌面文字</button>
+        <button class="btn" id="imgBtn">🖼️ 下載牌面圖</button>
         <button class="btn secondary" id="againBtn">🔄 再抽一次</button>
+      </div>
+      <div class="tip-box" id="tipBox">
+        <div class="tip-msg" id="tipMsg"></div>
+        <a class="tip-btn" id="tipBtn" href="#" target="_blank" rel="noopener">☕ 支持這個小站</a>
+        <div class="tip-note">完全自由，不用也沒關係 —— 牌永遠免費 🌙</div>
       </div>
     </div>
   </section>
@@ -403,6 +424,7 @@ function showResult() {
         <div class="meaning">${meaningOf(d.card, d.upright)}</div>
       </div>
     </div>`).join('');
+  renderTip();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   logToCloud();
 }
@@ -451,6 +473,22 @@ async function logToCloud() {
       body: JSON.stringify(payload),
     });
   } catch (e) { /* 靜默 */ }
+}
+
+// ===== 複製給 AI 解讀 =====
+$('aiBtn').addEventListener('click', () => {
+  const txt = buildAiPrompt(fullQuestion(), SPREADS[curSpread], curDraws);
+  copyText(txt)
+    .then(() => showToast('已複製 🤖 貼到 ChatGPT／Claude 就能看完整解讀'))
+    .catch(() => showToast('複製失敗，請改用截圖'));
+});
+
+// ===== 贊助區（沒設定連結就完全不出現）=====
+function renderTip() {
+  if (typeof TIP_URL === 'undefined' || !TIP_URL) return;
+  $('tipMsg').textContent = (typeof TIP_TEXT !== 'undefined' && TIP_TEXT) ? TIP_TEXT : '這次的牌如果有幫到你，可以請我喝杯咖啡 ☕';
+  $('tipBtn').href = TIP_URL;
+  $('tipBox').classList.add('show');
 }
 
 // ===== 複製文字 =====

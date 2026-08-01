@@ -194,6 +194,31 @@ function buildShareText(question, spread, draws, when) {
   return lines.join('\n');
 }
 
+// ===== 給 AI 的解讀提示詞 =====
+// 重點：把「這個站自己的牌義」一起帶進去，AI 的解讀才會貼近本站的口吻，
+//       而不是憑空給一段空泛的通用內容。
+function buildAiPrompt(question, spread, draws) {
+  const L = [];
+  L.push('你是一位溫暖而誠實的塔羅解讀者。請根據以下抽牌結果，為我做一次完整的解讀。');
+  L.push('');
+  L.push('【我的問題】' + (question || '（沒有特定問題，想看看目前的整體狀態）'));
+  L.push('【牌陣】' + spread.name + '　—— ' + spread.desc);
+  L.push('');
+  L.push('【抽到的牌】');
+  draws.forEach((d, i) => {
+    L.push(`${i + 1}. 位置「${spread.positions[i]}」（${spread.roles[i]}）`);
+    L.push(`   牌：${cardZhName(d.card)}　${d.upright ? '正位' : '逆位'}`);
+    L.push(`   牌義參考：${meaningOf(d.card, d.upright)}`);
+  });
+  L.push('');
+  L.push('【請這樣回答我】');
+  L.push('1. 先逐張說明每張牌在它所在的位置上代表什麼，講得具體一點，不要空泛。');
+  L.push('2. 最後把所有牌湊起來，針對我的問題給一個明確的整體解答與建議。');
+  L.push('3. 誠實但溫暖。如果牌面顯示阻力或警訊，直說沒關係，但要告訴我可以怎麼做。');
+  L.push('4. 請用繁體中文，總長度約 500～800 字。');
+  return L.join('\n');
+}
+
 // ===== 文字解析器（工作台用：容錯解析收到的抽牌文字） =====
 // 支援：「主牌 愚者 正位 輔助牌 魔術師 逆位 女祭司 正位」等鬆散格式
 // 別名：星幣/金幣→錢幣、隨從→侍者、皇后(小牌)→王后、聖杯Ace→聖杯一

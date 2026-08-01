@@ -18,3 +18,9 @@ const STUDIO_PWD = 'orangeba';
 // ⚠️ 讀取鑰匙（READ_KEY）故意不寫在這裡。
 //    它只存在你的 Apps Script 裡，以及你工作台瀏覽器的 localStorage。
 //    這樣就算有人翻遍公開原始碼，也讀不到你的紀錄。
+
+// ④ 贊助連結（選填）。留空字串 = 網站上完全不會出現贊助區塊
+//    Buy Me a Coffee：https://www.buymeacoffee.com/你的帳號
+//    綠界 ECPay 贊助：https://p.ecpay.com.tw/XXXXXX
+const TIP_URL = '';
+const TIP_TEXT = '這次的牌如果有幫到你，可以請我喝杯咖啡 ☕';

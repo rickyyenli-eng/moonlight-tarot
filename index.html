@@ -307,6 +307,7 @@
       <div class="tip-box" id="tipBox">
         <div class="tip-msg" id="tipMsg"></div>
         <a class="tip-btn" id="tipBtn" href="#" target="_blank" rel="noopener" data-t="tip_btn"></a>
+        <div class="tip-note" id="tipPay" style="display:none;"></div>
         <div class="tip-note" data-t="tip_note"></div>
       </div>
     </div>
@@ -736,11 +737,22 @@ function readCount() {
 let myReads = 0;
 
 // 贊助區不是每次都出現：等神諭卡抽過、或她已經回來第三次，才開這個口
+// 依語言挑贊助連結：中文給綠界（超商/ATM/LINE Pay），其他語言給 Ko-fi
+function tipUrl() {
+  if (typeof TIP_URL === 'undefined' || !TIP_URL) return '';
+  if (typeof TIP_URL === 'string') return TIP_URL;          // 舊格式也吃得下
+  return TIP_URL[LANG] || TIP_URL.en || TIP_URL.zh || '';
+}
 function renderTip() {
-  if (typeof TIP_URL === 'undefined' || !TIP_URL) return;
+  const url = tipUrl();
+  if (!url) { $('tipBox').classList.remove('show'); return; }
   if (!(curOracle || myReads >= 3)) { $('tipBox').classList.remove('show'); return; }
   $('tipMsg').textContent = (LANG === 'zh' && typeof TIP_TEXT !== 'undefined' && TIP_TEXT) ? TIP_TEXT : t('tip_msg');
-  $('tipBtn').href = TIP_URL;
+  $('tipBtn').href = url;
+  // 用綠界時把付款方式講出來，很多人是因為沒有 PayPal 才放棄的
+  const isEcpay = url.indexOf('ecpay') >= 0;
+  $('tipPay').textContent = isEcpay ? t('tip_pay_tw') : '';
+  $('tipPay').style.display = isEcpay ? 'block' : 'none';
   $('tipBox').classList.add('show');
 }
 

@@ -6,7 +6,7 @@
 
 // ① Google Apps Script 部署後的網址（結尾是 /exec）
 //    還沒設定就留空字串，網站照常運作，只是不會自動記錄
-const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbw_WPci2QnlGLwMep-ACxN4Mgz-KbPeWcSsdgt4nCXUU9z9m2zEy2OU7DZknrwElu5i/exec';
+const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbx-Dp8SZsjQ-IceKOatwQHJhAk7oIWkJKF694GPQB-ONl19kg59ttVjY4aCu67N1S_d/exec';
 
 // ② 寫入鑰匙 —— 公開的，只能「新增抽牌紀錄」，讀不到任何資料
 //    要跟 Apps Script 裡的 WRITE_KEY 一模一樣

@@ -191,8 +191,14 @@ const ORACLE_CARDS = [
   { emoji: '🫰', title: '現在就開始', msg: '「等準備好」是永遠不會來的那一天。今天就做一點。' },
 ];
 
-function drawOracle() {
-  return ORACLE_CARDS[Math.floor(Math.random() * ORACLE_CARDS.length)];
+function drawOracle(n) {
+  n = n || 3;
+  const idx = ORACLE_CARDS.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  return idx.slice(0, n).map(i => ORACLE_CARDS[i]);
 }
 // ===== 牌陣定義 =====
 const SPREADS = {
@@ -284,9 +290,10 @@ function buildShareText(question, spread, draws, when, oracle) {
   draws.forEach((d, i) => {
     L.push(spread.positions[i] + '　' + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
   });
-  if (oracle) {
+  if (oracle && oracle.length) {
     L.push('');
-    L.push('🌟 神諭卡：' + oracle.title + '　' + oracle.msg);
+    L.push('🌟 神諭卡');
+    oracle.forEach(o => L.push('　' + o.emoji + ' ' + o.title + '　' + o.msg));
   }
   return L.join('\n');
 }
@@ -577,17 +584,29 @@ function shortSummary(spreadId, draws, question) {
     else if (lbl === 'neg' && coreT > 0) conn = '但周圍的牌拉住了它，';
   }
 
+  // 牌面訊號混雜時要老實承認，不要一面倒
+  const posN = draws.filter((d, i) => tone(i) > 0).length;
+  const negN = draws.filter((d, i) => tone(i) < 0).length;
+  const mixed = posN > 0 && negN > 0;
+  let best = 0, bs = -99;
+  draws.forEach((d, i) => { const s = toneScore(d.card, d.upright); if (s > bs) { bs = s; best = i; } });
+
   let label, advice;
   if (lbl === 'pos') {
-    label = '整體偏順';
-    text += conn + (t ? `${t}這塊整體是順的，接下來適合主動一點。` : '整體是順的，接下來適合主動一點。');
+    label = mixed ? '偏順，但有雜音' : '整體偏順';
+    text += conn + (mixed
+      ? (t ? `${t}這塊整體偏順，但牌面有雜音，別因為順就大意。` : '整體偏順，但牌面有雜音，別因為順就大意。')
+      : (t ? `${t}這塊整體是順的，接下來適合主動一點。` : '整體是順的，接下來適合主動一點。'));
     advice = ws < 0
-      ? `唯一要留意的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
+      ? `要留意的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
       : adviceOf(draws[focusIdx].card, draws[focusIdx].upright);
   } else if (lbl === 'neg') {
-    label = '整體偏逆';
-    text += conn + (t ? `${t}這塊目前阻力偏大，硬推容易受傷。` : '目前阻力偏大，硬推容易受傷。');
-    advice = `最需要處理的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright);
+    label = mixed ? '偏逆，但有支撐' : '整體偏逆';
+    text += conn + (mixed
+      ? (t ? `${t}這塊目前偏逆，不過也不是全無支撐。` : '目前偏逆，不過也不是全無支撐。')
+      : (t ? `${t}這塊目前阻力偏大，硬推容易受傷。` : '目前阻力偏大，硬推容易受傷。'));
+    advice = `最需要處理的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
+      + (mixed && bs > 0 ? `　撐住你的是「${cardZhName(draws[best].card)}」，可以從它下手。` : '');
   } else {
     label = '好壞參半';
     text += t ? `${t}的局面還沒定型，走向取決於你接下來的選擇。` : '局面還沒定型，走向取決於你接下來的選擇。';

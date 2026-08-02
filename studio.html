@@ -131,7 +131,8 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
         <button class="btn gold" id="saveBtn">💾 儲存到紀錄</button>
       </div>
       <div class="io-row">
-        <button class="btn ai" id="aiBtn">✨ AI 潤稿</button>
+        <button class="btn secondary" id="copyPromptBtn">📋 複製 AI 提示詞</button>
+        <button class="btn ai" id="aiBtn">✨ AI 潤稿（需金鑰）</button>
         <button class="btn secondary" id="undoAiBtn" style="display:none;">↩ 還原成草稿</button>
       </div>
       <div class="text-soft" id="aiMsg" style="margin-top:8px;"></div>
@@ -343,6 +344,14 @@ function buildAiPrompt() {
   L.push('5. 直接輸出解讀內容，不要有開場白、不要重複題目、不要加註解。');
   return L.join('\n');
 }
+
+// 不用金鑰的做法：複製提示詞，自己貼到 ChatGPT／Claude／Gemini 網頁版
+$('copyPromptBtn').addEventListener('click', () => {
+  if (!$('reportOut').value.trim()) { showToast('先產生草稿'); return; }
+  copyText(buildAiPrompt())
+    .then(() => { showToast('提示詞已複製 📋'); $('aiMsg').textContent = '貼到 ChatGPT／Claude／Gemini 網頁版，把結果貼回上面的框就好。完全免費、不用金鑰。'; })
+    .catch(() => showToast('複製失敗'));
+});
 
 $('aiBtn').addEventListener('click', async () => {
   if (typeof CLOUD_URL === 'undefined' || !CLOUD_URL) { showToast('還沒設定後端'); return; }

@@ -160,13 +160,15 @@
   0%   { opacity: 0; transform: scale(.82) translateY(14px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
-.oracle-card .o-label { font-size: 11px; letter-spacing: 3px; color: #b9a8d6; margin-bottom: 12px; }
-.oracle-card .o-emoji { font-size: 46px; line-height: 1.1; }
-.oracle-card .o-title {
-  font-family: 'Fraunces', Georgia, serif; font-size: 22px; color: var(--gold);
-  margin: 8px 0 10px; letter-spacing: 1px;
+.oracle-card .o-label { font-size: 11px; letter-spacing: 3px; color: #b9a8d6; margin-bottom: 16px; }
+.o-item { display: flex; gap: 13px; text-align: left; padding: 13px 4px; }
+.o-item + .o-item { border-top: 1px solid rgba(185,168,214,.22); }
+.o-item .oi-emoji { flex: 0 0 34px; font-size: 28px; line-height: 1.25; text-align: center; }
+.o-item .oi-title {
+  font-family: 'Fraunces', Georgia, serif; font-size: 17px; color: var(--gold);
+  letter-spacing: .5px; margin-bottom: 3px;
 }
-.oracle-card .o-msg { font-size: 14.5px; color: #ede6d8; line-height: 1.85; max-width: 320px; margin: 0 auto; }
+.o-item .oi-msg { font-size: 13.5px; color: #ede6d8; line-height: 1.75; }
 .send-nudge {
   margin-top: 14px; text-align: center; font-size: 13px; color: var(--text-muted);
   background: #fffdf8; border: 1px dashed var(--accent); border-radius: 10px; padding: 12px;
@@ -259,14 +261,12 @@
       <div class="oracle-box" id="oracleBox">
         <div class="oracle-invite" id="oracleInvite">
           <div class="o-q" id="oracleQ"></div>
-          <button class="btn gold" id="oracleBtn">🌟 抽一張神諭卡</button>
+          <button class="btn gold" id="oracleBtn">🌟 抽三張神諭卡</button>
           <div class="o-note">神諭卡不預測結果，只回答「那我現在可以做什麼」</div>
         </div>
         <div class="oracle-card" id="oracleCard">
-          <div class="o-label">✦ 給你的行動指引 ✦</div>
-          <div class="o-emoji" id="oracleEmoji"></div>
-          <div class="o-title" id="oracleTitle"></div>
-          <div class="o-msg" id="oracleMsg"></div>
+          <div class="o-label">✦ 給你的三個行動指引 ✦</div>
+          <div id="oracleList"></div>
         </div>
       </div>
 
@@ -544,14 +544,16 @@ function resetOracle(verdictTone) {
   $('oracleInvite').style.display = 'block';
   $('oracleCard').classList.remove('show');
   $('oracleQ').textContent = verdictTone === 'neg'
-    ? '牌面看起來卡卡的。要不要抽一張神諭卡，看看現在可以做什麼？'
-    : '想要一句可以馬上執行的指引嗎？';
+    ? '牌面看起來卡卡的。要不要抽三張神諭卡，看看現在可以做什麼？'
+    : '想要幾句可以馬上執行的指引嗎？';
 }
 $('oracleBtn').addEventListener('click', () => {
-  curOracle = drawOracle();
-  $('oracleEmoji').textContent = curOracle.emoji;
-  $('oracleTitle').textContent = curOracle.title;
-  $('oracleMsg').textContent = curOracle.msg;
+  curOracle = drawOracle(3);
+  $('oracleList').innerHTML = curOracle.map(o => `
+    <div class="o-item">
+      <div class="oi-emoji">${o.emoji}</div>
+      <div><div class="oi-title">${o.title}</div><div class="oi-msg">${o.msg}</div></div>
+    </div>`).join('');
   $('oracleInvite').style.display = 'none';
   $('oracleCard').classList.add('show');
   flushLog();     // 神諭卡抽好了，這時候才把「唯一的那一筆」送出去
@@ -593,7 +595,7 @@ function buildLogPayload(info) {
     spreadId: curSpread,
     question: fullQuestion(),
     cards: curDraws.map((d, i) => ({ pos: spread.positions[i], n: d.card.n, name: cardZhName(d.card), up: d.upright })),
-    oracle: curOracle ? (curOracle.title + '｜' + curOracle.msg) : '',
+    oracle: curOracle ? curOracle.map(o => o.title + '｜' + o.msg).join('　/　') : '',
   };
 }
 

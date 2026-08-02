@@ -9,6 +9,11 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>">
 <link rel="stylesheet" href="tarot.css">
 <style>
+.lang-switch { position: absolute; top: 14px; right: 14px; display: flex; gap: 4px; }
+.lang-switch button { border: 1px solid var(--border); background: var(--bg-card); color: var(--text-soft);
+  font-size: 11.5px; font-family: inherit; padding: 4px 9px; border-radius: 99px; cursor: pointer; }
+.lang-switch button.on { background: var(--mystic1); color: #f0e9db; border-color: var(--mystic1); }
+.container { position: relative; }
 .lib-card {
   background: #fffdf8; border: 1px solid var(--border); border-radius: var(--radius);
   padding: 15px 16px; margin-bottom: 10px;
@@ -34,45 +39,66 @@
 </head>
 <body>
 <div class="container">
+  <div class="lang-switch">
+    <button data-l="zh">中</button><button data-l="en">EN</button><button data-l="ja">日</button>
+  </div>
   <header class="site-header">
-    <h1>📖 牌義知識庫</h1>
-    <div class="subtitle">78 張韋特塔羅 · 正逆位完整牌義</div>
+    <h1 data-t="lib_title"></h1>
+    <div class="subtitle" data-t="lib_sub"></div>
   </header>
   <nav class="top-nav">
-    <a href="index.html">🃏 線上抽牌</a>
-    <a href="library.html" class="active">📖 牌義知識庫</a>
+    <a href="index.html" data-t="nav_draw"></a>
+    <a href="library.html" class="active" data-t="nav_lib"></a>
   </nav>
 
   <section class="card-panel">
-    <input type="text" id="searchBox" placeholder="🔍 搜尋牌名或關鍵字（例：戀人、桃花、豐盛…）">
+    <input type="text" id="searchBox" data-tph="lib_search">
     <div style="margin-top:10px;" id="suitChips"></div>
     <div class="count-note" id="countNote"></div>
     <div id="libList"></div>
-    <div id="emptyMsg">找不到符合的牌 🌫️ 換個關鍵字試試</div>
+    <div id="emptyMsg" data-t="lib_empty"></div>
   </section>
 
-  <div class="footer-note">塔羅是與內心對話的鏡子，最終的答案永遠在你自己手上 ✨<br><span style="font-size:10.5px;">牌圖：1909 年原版韋特塔羅（Rider–Waite–Smith，Pamela Colman Smith 繪），已進入公有領域 · 圖源 Wikimedia Commons<br>本站占卜內容僅供娛樂與自我探索參考</span><br>Moonlight Tarot · <a href="studio.html" title="解牌工作台">🗝️</a></div>
+  <div class="footer-note">
+    <span data-t="foot_mirror"></span><br>
+    <span style="font-size:10.5px;"><span data-th="foot_credit"></span><br><span data-t="foot_disc"></span></span><br>
+    Moonlight Tarot · <a href="studio.html" title="studio">🗝️</a>
+  </div>
 </div>
 
+<script src="i18n.js"></script>
 <script src="tarot-core.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const SUITS = ['全部', '大阿爾克那', '權杖', '聖杯', '寶劍', '錢幣'];
+const SUITS_ZH = ['全部', '大阿爾克那', '權杖', '聖杯', '寶劍', '錢幣'];
+function suitLabel(zh) {
+  if (zh === '全部') return t('lib_all');
+  if (LANG !== 'zh' && I18N_SUITS[LANG] && I18N_SUITS[LANG][zh]) return I18N_SUITS[LANG][zh];
+  return zh;
+}
 let curSuit = '全部', curQ = '';
+function applyI18n() {
+  document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll('[data-th]').forEach(el => { el.innerHTML = t(el.dataset.th); });
+  document.querySelectorAll('[data-tph]').forEach(el => { el.placeholder = t(el.dataset.tph); });
+  document.documentElement.lang = LANG === 'zh' ? 'zh-Hant' : LANG;
+  document.querySelectorAll('.lang-switch button').forEach(b => b.classList.toggle('on', b.dataset.l === LANG));
+}
+document.querySelectorAll('.lang-switch button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.l)));
 
 function renderChips() {
-  $('suitChips').innerHTML = SUITS.map(s => `<span class="chip ${s === curSuit ? 'active' : ''}" data-s="${s}">${s}</span>`).join('');
+  $('suitChips').innerHTML = SUITS_ZH.map(s => `<span class="chip ${s === curSuit ? 'active' : ''}" data-s="${s}">${suitLabel(s)}</span>`).join('');
   document.querySelectorAll('#suitChips .chip').forEach(ch => ch.addEventListener('click', () => {
-    curSuit = ch.dataset.s; renderChips(); renderList();
+    curSuit = ch.dataset.s; applyI18n(); renderChips(); renderList();
   }));
 }
 function renderList() {
   const list = TAROT_CARDS.filter(c => {
-    if (curSuit !== '全部' && suitOf(c) !== curSuit) return false;
+    if (curSuit !== '全部' && suitZh_(c) !== curSuit) return false;
     if (!curQ) return true;
-    return (c.name + c.up + c.rev).toLowerCase().includes(curQ.toLowerCase());
+    return (c.name + c.up + c.rev + cardZhName(c) + meaningOf(c, true) + meaningOf(c, false)).toLowerCase().includes(curQ.toLowerCase());
   });
-  $('countNote').textContent = `共 ${list.length} 張`;
+  $('countNote').textContent = t('lib_count', { n: list.length });
   $('emptyMsg').style.display = list.length ? 'none' : 'block';
   $('libList').innerHTML = list.map(c => `
     <div class="lib-card">
@@ -81,16 +107,16 @@ function renderList() {
       <div class="head">
         <span class="emoji">${c.emoji}</span>
         <span class="zh">${cardZhName(c)}</span>
-        <span class="en">${c.name.slice(cardZhName(c).length).trim()}</span>
+        <span class="en">${LANG === 'zh' ? c.name.slice(c.name.split(' ')[0].length).trim() : ''}</span>
         <span class="suit-tag">${suitOf(c)}</span>
       </div>
-      <div class="m-row"><span class="m-tag up">正位</span><span>${c.up}</span></div>
-      <div class="m-row"><span class="m-tag rev">逆位</span><span>${c.rev}</span></div>
+      <div class="m-row"><span class="m-tag up">${t('upright')}</span><span>${meaningOf(c, true)}</span></div>
+      <div class="m-row"><span class="m-tag rev">${t('reversed')}</span><span>${meaningOf(c, false)}</span></div>
       </div>
     </div>`).join('');
 }
 $('searchBox').addEventListener('input', e => { curQ = e.target.value.trim(); renderList(); });
-renderChips(); renderList();
+applyI18n(); renderChips(); renderList();
 </script>
 </body>
 </html>

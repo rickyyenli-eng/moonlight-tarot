@@ -97,7 +97,7 @@ const TAROT_CARDS = [
 
 // ===== 問題模板 =====
 // 每個主題都有「跟它相符」的常見細節，而且全部選填：沒填就用通用問法
-const TAROT_TEMPLATES = [
+const TAROT_TEMPLATES_ZH = [
   {
     label: '💼 工作狀態',
     blanks: ['公司／單位名稱', '你的職位'],
@@ -137,6 +137,27 @@ const TAROT_TEMPLATES = [
       : '我正在兩個選擇之間難以抉擇，想知道兩條路各自的發展？',
   },
 ];
+
+// 依語言組出模板
+function getTemplates() {
+  const l = L_();
+  if (l === 'zh' || typeof I18N_TPL === 'undefined' || !I18N_TPL[l]) return TAROT_TEMPLATES_ZH;
+  return I18N_TPL[l].map((row, i) => {
+    const [label, blanks, tpl, fa, fb] = row;
+    const plain = I18N_TPL_PLAIN[l][i];
+    return {
+      label: label,
+      blanks: blanks,
+      spread: TAROT_TEMPLATES_ZH[i].spread,
+      make: v => {
+        if (!v.some(x => x)) return plain;
+        const a = v[0] ? fa.split('{v}').join(v[0]) : '';
+        const b = (v[1] && fb) ? fb.split('{v}').join(v[1]) : '';
+        return tpl.split('{a}').join(a).split('{b}').join(b);
+      },
+    };
+  });
+}
 
 // ===== 神諭卡：Das Spiel der Hofnung（希望之戲，1799）36 張 =====
 // 這是 Lenormand 神諭牌的原始祖本，著作權早已到期、進入公有領域。
@@ -182,6 +203,12 @@ const ORACLE_CARDS = [
   { n: 36, title: '十字', de: 'Das Kreuz', msg: '有些擔子不是你的。問問哪些可以還回去。' },
 ];
 
+function oracleText(o) {
+  const l = L_();
+  if (l !== 'zh' && typeof I18N_ORACLE !== 'undefined' && I18N_ORACLE[l] && I18N_ORACLE[l][o.n]) return I18N_ORACLE[l][o.n];
+  return { title: o.title, msg: o.msg };
+}
+
 function drawOracle(n) {
   n = n || 3;
   const idx = ORACLE_CARDS.map((_, i) => i);
@@ -192,7 +219,7 @@ function drawOracle(n) {
   return idx.slice(0, n).map(i => ORACLE_CARDS[i]);
 }
 // ===== 牌陣定義 =====
-const SPREADS = {
+const SPREADS_ZH = {
   triangle: {
     id: 'triangle', name: '聖三角牌陣', emoji: '🔺', count: 3,
     desc: '主牌看核心，兩張輔助牌補充脈絡。適合大部分的問題。',
@@ -213,9 +240,39 @@ const SPREADS = {
   },
 };
 
+// 依語言取牌陣文字
+const SPREADS = new Proxy({}, {
+  get(_, id) {
+    const base = SPREADS_ZH[id];
+    if (!base) return undefined;
+    const l = L_();
+    if (l !== 'zh' && typeof I18N_SPREADS !== 'undefined' && I18N_SPREADS[l] && I18N_SPREADS[l][id]) {
+      const o = I18N_SPREADS[l][id];
+      return { id: base.id, emoji: base.emoji, count: base.count, name: o.name, desc: o.desc, positions: o.positions, roles: o.roles };
+    }
+    return base;
+  },
+  ownKeys() { return Object.keys(SPREADS_ZH); },
+  getOwnPropertyDescriptor() { return { enumerable: true, configurable: true }; },
+});
+
 // ===== 牌義小工具 =====
-function cardZhName(card) { return card.name.split(' ')[0]; }
-function meaningOf(card, upright) { return upright ? card.up : card.rev; }
+// 三語共用：中文是內建的，英日文從 i18n.js 取
+function L_() { return (typeof LANG !== 'undefined') ? LANG : 'zh'; }
+function cardPack_(card) {
+  const l = L_();
+  if (l !== 'zh' && typeof I18N_CARDS !== 'undefined' && I18N_CARDS[l] && I18N_CARDS[l][card.n]) return I18N_CARDS[l][card.n];
+  return null;
+}
+function cardZhName(card) {
+  const p = cardPack_(card);
+  return p ? p.name : card.name.split(' ')[0];
+}
+function meaningOf(card, upright) {
+  const p = cardPack_(card);
+  if (p) return upright ? p.up : p.rev;
+  return upright ? card.up : card.rev;
+}
 // 牌義開頭「A、B、C。」為關鍵字，其後為建議句
 function keywordsOf(card, upright) {
   const t = meaningOf(card, upright);
@@ -226,13 +283,18 @@ function adviceOf(card, upright) {
   const i = t.indexOf('。');
   return i >= 0 ? t.slice(i + 1).replace(/。?$/, '。') : t;
 }
-function suitOf(card) {
+function suitZh_(card) {
   if (card.n <= 21) return '大阿爾克那';
-  const z = cardZhName(card);
+  const z = card.name.split(' ')[0];
   if (z.startsWith('權杖')) return '權杖';
   if (z.startsWith('聖杯')) return '聖杯';
   if (z.startsWith('寶劍')) return '寶劍';
   return '錢幣';
+}
+function suitOf(card) {
+  const zh = suitZh_(card), l = L_();
+  if (l !== 'zh' && typeof I18N_SUITS !== 'undefined' && I18N_SUITS[l] && I18N_SUITS[l][zh]) return I18N_SUITS[l][zh];
+  return zh;
 }
 
 // ===== 語氣判斷（供綜合解答收尾與二擇一比較） =====
@@ -251,7 +313,7 @@ function hitsAffirmative(text, word) {
   }
 }
 function toneScore(card, upright) {
-  const t = meaningOf(card, upright);
+  const t = upright ? card.up : card.rev;   // 固定用中文原文計分，換語言不影響判定
   let s = 0;
   TONE_POS.forEach(w => { if (hitsAffirmative(t, w)) s += 1; });
   TONE_NEG.forEach(w => { if (hitsAffirmative(t, w)) s -= 1; });
@@ -274,17 +336,20 @@ function drawCards(count) {
 // ===== 分享文字（公開站產生 → 工作台可直接解析） =====
 function buildShareText(question, spread, draws, when, oracle) {
   const L = [];
-  L.push('🌙 ' + SITE_NAME + ' · ' + SITE_NAME_ZH);
+  L.push('🌙 ' + SITE_NAME + (L_() === 'zh' ? ' · ' + SITE_NAME_ZH : ''));
   if (when) L.push('📅 ' + when);
-  L.push('❓ 問題：' + (question || '（未填寫）'));
-  L.push('🃏 牌陣：' + spread.name);
+  const zh = L_() === 'zh';
+  const up = () => (typeof t === 'function' ? t('upright') : '正位');
+  const rv = () => (typeof t === 'function' ? t('reversed') : '逆位');
+  L.push((zh ? '❓ 問題：' : '❓ ') + (question || (zh ? '（未填寫）' : '—')));
+  L.push('🃏 ' + spread.name);
   draws.forEach((d, i) => {
-    L.push(spread.positions[i] + '　' + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
+    L.push(spread.positions[i] + '　' + cardZhName(d.card) + '　' + (d.upright ? up() : rv()));
   });
   if (oracle && oracle.length) {
     L.push('');
-    L.push('🌟 神諭卡');
-    oracle.forEach(o => L.push('　' + o.n + '. ' + o.title + '　' + o.msg));
+    L.push('🌟 ' + (zh ? '神諭卡' : (L_() === 'ja' ? 'オラクル' : 'Oracle')));
+    oracle.forEach(o => { const x = oracleText(o); L.push('　' + o.n + '. ' + x.title + '　' + x.msg); });
   }
   return L.join('\n');
 }
@@ -539,70 +604,88 @@ function synthesize(spreadId, draws, question, v) {
 // ===== 簡短總結（公開站結果頁用）=====
 // 誠實給出「順／中性／逆」的判斷，不粉飾；判定不順時一定附上可以做的事
 function shortSummary(spreadId, draws, question) {
+  const l = L_();
+  const E = (l !== 'zh' && typeof I18N_ENGINE !== 'undefined' && I18N_ENGINE[l]) ? I18N_ENGINE[l] : null;
   const topic = detectTopic(question);
-  const kw1 = i => keywordsOf(draws[i].card, draws[i].upright).split('、')[0];
-  const nm = i => cardZhName(draws[i].card) + '（' + (draws[i].upright ? '正位' : '逆位') + '）';
+  const kw1 = i => keywordsOf(draws[i].card, draws[i].upright).split(/[、,]/)[0];
+  const nm = i => cardZhName(draws[i].card) + (l === 'zh'
+    ? '（' + (draws[i].upright ? '正位' : '逆位') + '）'
+    : ' (' + (draws[i].upright ? t('upright') : t('reversed')) + ')');
   const tone = i => toneScore(draws[i].card, draws[i].upright);
   let text, total, focusIdx;
 
   if (spreadId === 'timeline') {
-    text = `走向由「${nm(2)}」定調，關鍵是「${kw1(2)}」。`;
-    total = tone(2) * 2 + tone(1);
-    focusIdx = 2;
+    text = E ? E.flow.split('{c}').join(nm(2)).split('{k}').join(kw1(2))
+             : `走向由「${nm(2)}」定調，關鍵是「${kw1(2)}」。`;
+    total = tone(2) * 2 + tone(1); focusIdx = 2;
   } else if (spreadId === 'choice') {
     const a = tone(1) + tone(2), b = tone(3) + tone(4);
-    if (a - b >= 2)      { text = '兩條路比下來，牌面偏向【選擇 A】。'; focusIdx = 2; total = a; }
-    else if (b - a >= 2) { text = '兩條路比下來，牌面偏向【選擇 B】。'; focusIdx = 4; total = b; }
-    else                 { text = '兩條路的能量不相上下，牌沒有替你選邊。'; focusIdx = 0; total = Math.max(a, b); }
+    if (a - b >= 2)      { text = E ? E.pickA : '兩條路比下來，牌面偏向【選擇 A】。'; focusIdx = 2; total = a; }
+    else if (b - a >= 2) { text = E ? E.pickB : '兩條路比下來，牌面偏向【選擇 B】。'; focusIdx = 4; total = b; }
+    else                 { text = E ? E.even  : '兩條路的能量不相上下，牌沒有替你選邊。'; focusIdx = 0; total = Math.max(a, b); }
   } else {
-    text = `核心是「${nm(0)}」，關鍵是「${kw1(0)}」。`;
-    total = tone(0) * 2 + tone(1) + tone(2);
-    focusIdx = 0;
+    text = E ? E.core.split('{c}').join(nm(0)).split('{k}').join(kw1(0))
+             : `核心是「${nm(0)}」，關鍵是「${kw1(0)}」。`;
+    total = tone(0) * 2 + tone(1) + tone(2); focusIdx = 0;
   }
 
   const lbl = verdictOf(total);
-  const t = (topic.id === 'general' || spreadId === 'choice') ? '' : topic.name;
+  const tName = E ? (E.topics[topic.id] || '') : topic.name;
+  const t_ = (topic.id === 'general' || spreadId === 'choice') ? '' : tName;
 
-  // 最需要被處理的那張牌 —— 建議就從它來
-  let worst = 0, ws = 99;
-  draws.forEach((d, i) => { const s = toneScore(d.card, d.upright); if (s < ws) { ws = s; worst = i; } });
-
-  // 主牌本身的語氣如果跟整體判定相反，要講出來，否則讀起來會自相矛盾
   const coreT = tone(focusIdx);
   let conn = '';
   if (spreadId !== 'choice') {
-    if (lbl === 'pos' && coreT < 0) conn = '不過其他牌撐住了局面，';
-    else if (lbl === 'neg' && coreT > 0) conn = '但周圍的牌拉住了它，';
+    if (lbl === 'pos' && coreT < 0) conn = E ? E.conn_pos : '不過其他牌撐住了局面，';
+    else if (lbl === 'neg' && coreT > 0) conn = E ? E.conn_neg : '但周圍的牌拉住了它，';
   }
+  // 英文的轉折語也是接在句子中間設計的，放句首時要大寫
+  if (L_() === 'en' && conn) conn = conn.charAt(0).toUpperCase() + conn.slice(1);
 
-  // 牌面訊號混雜時要老實承認，不要一面倒
   const posN = draws.filter((d, i) => tone(i) > 0).length;
   const negN = draws.filter((d, i) => tone(i) < 0).length;
   const mixed = posN > 0 && negN > 0;
-  let best = 0, bs = -99;
-  draws.forEach((d, i) => { const s = toneScore(d.card, d.upright); if (s > bs) { bs = s; best = i; } });
+  let worst = 0, ws = 99, best = 0, bs = -99;
+  draws.forEach((d, i) => {
+    const s = toneScore(d.card, d.upright);
+    if (s < ws) { ws = s; worst = i; }
+    if (s > bs) { bs = s; best = i; }
+  });
+  const nmw = cardZhName(draws[worst].card), nmb = cardZhName(draws[best].card);
 
   let label, advice;
+  // 英文的收尾句設計成接在轉折語後面，沒有轉折語時要把開頭改大寫
+  const cap = str => (L_() === 'en' && !conn && str) ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+  const pick = (k, kt) => E ? cap(t_ ? E[kt].split('{t}').join(t_) : E[k]) : null;
+
   if (lbl === 'pos') {
-    label = mixed ? '偏順，但有雜音' : '整體偏順';
-    text += conn + (mixed
-      ? (t ? `${t}這塊整體偏順，但牌面有雜音，別因為順就大意。` : '整體偏順，但牌面有雜音，別因為順就大意。')
-      : (t ? `${t}這塊整體是順的，接下來適合主動一點。` : '整體是順的，接下來適合主動一點。'));
+    label = E ? (mixed ? E.lbl_pos_mix : E.lbl_pos) : (mixed ? '偏順，但有雜音' : '整體偏順');
+    text += conn + (E
+      ? (mixed ? pick('pos_mix', 'pos_mix_t') : pick('pos', 'pos_t'))
+      : (mixed
+        ? (t_ ? `${t_}這塊整體偏順，但牌面有雜音，別因為順就大意。` : '整體偏順，但牌面有雜音，別因為順就大意。')
+        : (t_ ? `${t_}這塊整體是順的，接下來適合主動一點。` : '整體是順的，接下來適合主動一點。')));
     advice = ws < 0
-      ? `要留意的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
+      ? (E ? E.adv_watch.split('{c}').join(nmw) : `要留意的是「${nmw}」——`) + adviceOf(draws[worst].card, draws[worst].upright)
       : adviceOf(draws[focusIdx].card, draws[focusIdx].upright);
   } else if (lbl === 'neg') {
-    label = mixed ? '偏逆，但有支撐' : '整體偏逆';
-    text += conn + (mixed
-      ? (t ? `${t}這塊目前偏逆，不過也不是全無支撐。` : '目前偏逆，不過也不是全無支撐。')
-      : (t ? `${t}這塊目前阻力偏大，硬推容易受傷。` : '目前阻力偏大，硬推容易受傷。'));
-    advice = `最需要處理的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
-      + (mixed && bs > 0 ? `　撐住你的是「${cardZhName(draws[best].card)}」，可以從它下手。` : '');
+    label = E ? (mixed ? E.lbl_neg_mix : E.lbl_neg) : (mixed ? '偏逆，但有支撐' : '整體偏逆');
+    text += conn + (E
+      ? (mixed ? pick('neg_mix', 'neg_mix_t') : pick('neg', 'neg_t'))
+      : (mixed
+        ? (t_ ? `${t_}這塊目前偏逆，不過也不是全無支撐。` : '目前偏逆，不過也不是全無支撐。')
+        : (t_ ? `${t_}這塊目前阻力偏大，硬推容易受傷。` : '目前阻力偏大，硬推容易受傷。')));
+    advice = (E ? E.adv_worst.split('{c}').join(nmw) : `最需要處理的是「${nmw}」——`)
+      + adviceOf(draws[worst].card, draws[worst].upright)
+      + (mixed && bs > 0
+        ? (E ? E.adv_hold.split('{c}').join(nmb) : `　撐住你的是「${nmb}」，可以從它下手。`)
+        : '');
   } else {
-    label = '好壞參半';
-    text += t ? `${t}的局面還沒定型，走向取決於你接下來的選擇。` : '局面還沒定型，走向取決於你接下來的選擇。';
+    label = E ? E.lbl_neu : '好壞參半';
+    text += E ? pick('neu', 'neu_t')
+              : (t_ ? `${t_}的局面還沒定型，走向取決於你接下來的選擇。` : '局面還沒定型，走向取決於你接下來的選擇。');
     advice = ws < 0
-      ? `要留意的是「${cardZhName(draws[worst].card)}」——` + adviceOf(draws[worst].card, draws[worst].upright)
+      ? (E ? E.adv_watch.split('{c}').join(nmw) : `要留意的是「${nmw}」——`) + adviceOf(draws[worst].card, draws[worst].upright)
       : adviceOf(draws[focusIdx].card, draws[focusIdx].upright);
   }
   return { tone: lbl, label, text, advice };

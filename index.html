@@ -209,35 +209,38 @@
 </head>
 <body>
 <div class="container">
+  <div class="lang-switch">
+    <button data-l="zh">中</button><button data-l="en">EN</button><button data-l="ja">日</button>
+  </div>
   <header class="site-header">
     <h1>🌙 Moonlight Tarot</h1>
-    <div class="subtitle">月光塔羅 · 靜下心，讓牌與你對話</div>
+    <div class="subtitle" data-t="site_sub"></div>
   </header>
   <nav class="top-nav">
-    <a href="index.html" class="active">🃏 線上抽牌</a>
-    <a href="library.html">📖 牌義知識庫</a>
+    <a href="index.html" class="active" data-t="nav_draw"></a>
+    <a href="library.html" data-t="nav_lib"></a>
   </nav>
 
   <!-- STEP 1 牌陣 -->
   <section class="card-panel setup-panel" id="spreadPanel">
-    <div class="panel-title">① 選擇牌陣</div>
-    <div class="text-soft" style="margin-bottom:12px;">不同的問題適合不同的牌陣</div>
+    <div class="panel-title" data-t="step1"></div>
+    <div class="text-soft" style="margin-bottom:12px;" data-t="step1_sub"></div>
     <div id="spreadList"></div>
   </section>
 
   <!-- STEP 2 問題 -->
   <section class="card-panel setup-panel">
-    <div class="panel-title">② 你想問什麼？</div>
-    <div class="text-soft" style="margin-bottom:12px;">點一下主題就好，不用打任何字 ✨</div>
+    <div class="panel-title" data-t="step2"></div>
+    <div class="text-soft" style="margin-bottom:12px;" data-t="step2_sub"></div>
     <div id="tplChips"></div>
-    <div class="text-soft" style="margin:14px 0 5px;">你的問題</div>
-    <textarea id="questionInput" placeholder="點上面的主題會自動幫你填，也可以自己寫"></textarea>
+    <div class="text-soft" style="margin:14px 0 5px;" data-t="your_q"></div>
+    <textarea id="questionInput" data-tph="q_ph"></textarea>
     <div class="tpl-status" id="tplStatus"></div>
     <div class="detail-box" id="detailBox">
-      <div class="text-soft" style="margin-bottom:8px;">想更貼近你的狀況可以填，<b>不填也沒關係</b></div>
+      <div class="text-soft" style="margin-bottom:8px;" data-th="detail_hint"></div>
       <div id="blankInputs"></div>
     </div>
-    <button class="btn gold big" id="startBtn" style="margin-top:16px;">🌙 靜心完畢，開始洗牌</button>
+    <button class="btn gold big" id="startBtn" style="margin-top:16px;" data-t="start"></button>
   </section>
 
   <!-- 儀式 -->
@@ -248,14 +251,14 @@
       <div id="fanWrap">
         <div id="fanScroller"><div id="fanRow"></div></div>
         <div class="text-soft fan-hint" style="color:#9d8fc0; font-size:11.5px;">
-          <span class="hint-mobile">← 左右滑動牌串，憑直覺點選 →</span>
-          <span class="hint-desktop">78 張都在這裡，憑直覺點選你的牌</span>
+          <span class="hint-mobile" data-t="hint_mobile"></span>
+          <span class="hint-desktop" data-t="hint_desktop"></span>
         </div>
-        <button class="btn gold" id="flipBtn" style="margin-top:14px;" disabled>翻牌 ✨</button>
+        <button class="btn gold" id="flipBtn" style="margin-top:14px;" disabled data-t="flip"></button>
       </div>
       <div id="revealWrap">
         <div id="revealRow"></div>
-        <button class="btn gold" id="showResultBtn" style="margin-top:12px; display:none;">看完整解讀 →</button>
+        <button class="btn gold" id="showResultBtn" style="margin-top:12px; display:none;" data-t="see_full"></button>
       </div>
     </div>
   </section>
@@ -263,66 +266,63 @@
   <!-- 結果 -->
   <section id="resultSection">
     <div class="card-panel">
-      <div class="panel-title" id="resultTitle">🌟 你的牌面</div>
+      <div class="panel-title" id="resultTitle" data-t="your_cards"></div>
       <div class="text-soft" id="resultMeta" style="margin-bottom:12px;"></div>
       <div id="resultCards"></div>
       <div class="synth-box">
         <div class="synth-head">
-          <span style="font-size:12px; letter-spacing:2px; color:#8a6e4e;">✦ 綜合訊息 ✦</span>
+          <span style="font-size:12px; letter-spacing:2px; color:#8a6e4e;" data-t="synth"></span>
           <span class="verdict" id="verdictTag"></span>
         </div>
         <div id="synthText" style="font-size:14.5px; line-height:1.75;"></div>
         <div class="advice-line" id="adviceText"></div>
-        <div style="font-size:11.5px; color:#9a8a70; margin-top:10px;">牌面怎麼說就怎麼寫，不修飾。想要逐張深入的完整解讀，建議尋求專業的塔羅師 🌙</div>
+        <div style="font-size:11.5px; color:#9a8a70; margin-top:10px;" data-t="synth_note"></div>
       </div>
-      <div class="deep-loading" id="deepLoading"><span class="dots">正在為你寫一份更完整的解讀</span></div>
+      <div class="deep-loading" id="deepLoading"><span class="dots" data-t="deep_loading"></span></div>
       <div class="deep-box" id="deepBox">
-        <div class="deep-head">✦ 完整解讀 ✦</div>
+        <div class="deep-head" data-t="deep_head"></div>
         <div class="deep-body" id="deepBody"></div>
       </div>
 
       <div class="oracle-box" id="oracleBox">
         <div class="oracle-invite" id="oracleInvite">
           <div class="o-q" id="oracleQ"></div>
-          <button class="btn gold" id="oracleBtn">🌟 抽三張神諭卡</button>
-          <div class="o-note">神諭卡不預測結果，只回答「那我現在可以做什麼」</div>
+          <button class="btn gold" id="oracleBtn" data-t="oracle_btn"></button>
+          <div class="o-note" data-t="oracle_note"></div>
         </div>
         <div class="oracle-card" id="oracleCard">
-          <div class="o-label">✦ 給你的三個行動指引 ✦</div>
+          <div class="o-label" data-t="oracle_head"></div>
           <div id="oracleList"></div>
-          <div class="oracle-credit">
-            牌圖：《Das Spiel der Hofnung》（希望之戲，1799，J. K. Hechtel）—— Lenormand 神諭牌的原始祖本，<br>
-            著作權已到期並進入公有領域 · 圖源 Wikimedia Commons<br>
-            牌義以傳統含意為基礎改寫，僅供娛樂與自我探索參考
-          </div>
+          <div class="oracle-credit" data-th="oracle_credit"></div>
         </div>
       </div>
 
       <div class="result-actions">
-        <button class="btn" id="copyBtn">📋 複製文字</button>
-        <button class="btn" id="imgBtn">🖼️ 複製圖片</button>
+        <button class="btn" id="copyBtn" data-t="copy_text"></button>
+        <button class="btn" id="imgBtn" data-t="copy_img"></button>
       </div>
       <div class="result-actions" style="margin-top:8px;">
-        <button class="btn secondary" id="againBtn">🔄 再抽一次</button>
+        <button class="btn secondary" id="againBtn" data-t="again"></button>
       </div>
       <div class="tip-box" id="tipBox">
         <div class="tip-msg" id="tipMsg"></div>
-        <a class="tip-btn" id="tipBtn" href="#" target="_blank" rel="noopener">☕ 支持這個小站</a>
-        <div class="tip-note">完全自由，不用也沒關係 —— 牌永遠免費 🌙</div>
+        <a class="tip-btn" id="tipBtn" href="#" target="_blank" rel="noopener" data-t="tip_btn"></a>
+        <div class="tip-note" data-t="tip_note"></div>
       </div>
     </div>
   </section>
 
   <div class="footer-note">
-    塔羅是與內心對話的鏡子，最終的答案永遠在你自己手上 ✨<br>
-    <span style="font-size:10.5px;">為了提供解牌服務，本站會記錄抽牌的時間、牌面與連線資訊（IP／地區）。不會記錄姓名或聯絡方式。<br>塔羅牌圖：1909 年原版韋特塔羅（Rider–Waite–Smith，Pamela Colman Smith 繪）· 神諭牌圖：《Das Spiel der Hofnung》（1799）<br>兩者著作權皆已到期並進入公有領域 · 圖源 Wikimedia Commons<br>本站占卜內容僅供娛樂與自我探索參考</span><br>
-    Moonlight Tarot · <a href="studio.html" title="解牌工作台">🗝️</a>
+    <span data-t="foot_mirror"></span><br>
+    <span style="font-size:10.5px;"><span data-t="foot_privacy"></span><br><span data-th="foot_credit"></span><br><span data-t="foot_disc"></span></span><br>
+    Moonlight Tarot · <a href="studio.html" title="studio">🗝️</a>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 <canvas id="shareCanvas" style="display:none;"></canvas>
 
 <script src="config.js"></script>
+<script src="i18n.js"></script>
 <script src="tarot-core.js"></script>
 <script>
 // ===== 狀態 =====
@@ -332,8 +332,8 @@ let pickedIdx = [];     // 扇形中被點選的順序
 const $ = id => document.getElementById(id);
 
 function showToast(msg) {
-  const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._tm); t._tm = setTimeout(() => t.classList.remove('show'), 2400);
+  const el = $('toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._tm); el._tm = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
 // ===== 牌陣選擇 =====
@@ -341,7 +341,7 @@ function renderSpreads() {
   $('spreadList').innerHTML = Object.values(SPREADS).map(s => `
     <div class="spread-opt ${s.id === curSpread ? 'active' : ''}" data-id="${s.id}">
       <div class="s-emoji">${s.emoji}</div>
-      <div><div class="s-name">${s.name} · ${s.count}張</div><div class="s-desc">${s.desc}</div></div>
+      <div><div class="s-name">${s.name} · ${t('cards_n', { n: s.count })}</div><div class="s-desc">${s.desc}</div></div>
     </div>`).join('');
   document.querySelectorAll('.spread-opt').forEach(el => el.addEventListener('click', () => onPickSpread(el.dataset.id)));
 }
@@ -363,7 +363,7 @@ function onPickSpread(id) {
   renderTemplates();
   // 二擇一底下只有一個主題，直接幫他選好
   if (curSpread === 'choice' && !activeTpl && autoFilled) {
-    const only = TAROT_TEMPLATES.findIndex(t => t.spread === 'choice');
+    const only = getTemplates().findIndex(x => x.spread === 'choice');
     if (only >= 0) selectTemplate(only);
   }
   updateStatus();
@@ -376,8 +376,8 @@ let activeTpl = null;
 let detailOpen = false;
 
 // 二擇一牌陣只配二擇一主題；其他牌陣則不出現二擇一
-function templateFitsSpread(t) {
-  return curSpread === 'choice' ? t.spread === 'choice' : t.spread !== 'choice';
+function templateFitsSpread(tpl) {
+  return curSpread === 'choice' ? tpl.spread === 'choice' : tpl.spread !== 'choice';
 }
 
 function applyTemplate(vals) {
@@ -398,9 +398,9 @@ function hasDetails() {
 function updateStatus() {
   const filled = $('questionInput').value.trim().length > 0;
   const parts = [];
-  if (filled) parts.push('<span class="tpl-ok">✓ 問題已填好，直接開始抽牌就可以了</span>');
+  if (filled) parts.push('<span class="tpl-ok">' + t('q_ok') + '</span>');
   if (hasDetails()) {
-    parts.push(`<span class="more-link" id="moreLink">${detailOpen ? '收起補充' : '＋ 想補充細節？（可跳過）'}</span>`);
+    parts.push(`<span class="more-link" id="moreLink">${detailOpen ? t('more_close') : t('more_open')}</span>`);
   } else {
     detailOpen = false;
   }
@@ -411,32 +411,31 @@ function updateStatus() {
 }
 
 function selectTemplate(idx) {
-  const t = TAROT_TEMPLATES[idx];
-  if (!t) return;
-  activeTpl = t;
+  const tpl = getTemplates()[idx];
+  if (!tpl) return;
+  activeTpl = tpl;
   detailOpen = false;
 
-  if (t.spread && t.spread !== curSpread) { curSpread = t.spread; renderSpreads(); renderTemplates(); }
+  if (tpl.spread && tpl.spread !== curSpread) { curSpread = tpl.spread; renderSpreads(); renderTemplates(); }
 
   document.querySelectorAll('#tplChips .chip').forEach(c =>
     c.classList.toggle('active', +c.dataset.i === idx));
 
-  // 細節欄先準備好，但不顯示
   const bi = $('blankInputs');
-  bi.innerHTML = t.blanks.map((b, j) => `<input type="text" id="blank${j}" placeholder="${b}">`).join('');
-  t.blanks.forEach((b, j) => {
+  bi.innerHTML = tpl.blanks.map((b, j) => `<input type="text" id="blank${j}" placeholder="${b}">`).join('');
+  tpl.blanks.forEach((b, j) => {
     $('blank' + j).addEventListener('input', () => {
-      applyTemplate(t.blanks.map((_, k) => $('blank' + k).value.trim()));
+      applyTemplate(tpl.blanks.map((_, k) => $('blank' + k).value.trim()));
     });
   });
 
-  applyTemplate(t.blanks.map(() => ''));   // 立刻帶入通用問法
+  applyTemplate(tpl.blanks.map(() => ''));
 }
 
 function renderTemplates() {
-  const list = TAROT_TEMPLATES.map((t, i) => ({ t, i })).filter(({ t }) => templateFitsSpread(t));
-  $('tplChips').innerHTML = list.map(({ t, i }) =>
-    `<span class="chip ${activeTpl === t ? 'active' : ''}" data-i="${i}">${t.label}</span>`).join('');
+  const list = getTemplates().map((tp, i) => ({ t: tp, i })).filter(x => templateFitsSpread(x.t));
+  $('tplChips').innerHTML = list.map(({ t: tp, i }) =>
+    `<span class="chip ${activeTpl === tp ? 'active' : ''}" data-i="${i}">${tp.label}</span>`).join('');
   document.querySelectorAll('#tplChips .chip').forEach(ch =>
     ch.addEventListener('click', () => selectTemplate(+ch.dataset.i)));
 }
@@ -450,7 +449,7 @@ $('startBtn').addEventListener('click', () => {
   $('fanWrap').style.display = 'none';
   $('revealWrap').style.display = 'none';
   $('shuffleAnim').style.display = 'block';
-  $('ritualHint').innerHTML = '牌正在洗勻，深呼吸，心裡默想你的問題…';
+  $('ritualHint').textContent = t('shuffling');
   // 洗牌動畫
   const anim = $('shuffleAnim'); anim.innerHTML = '';
   for (let i = 0; i < 8; i++) {
@@ -473,15 +472,15 @@ function showFan() {
   pickedIdx = [];
   $('shuffleAnim').style.display = 'none';
   $('fanWrap').style.display = 'block';
-  $('ritualHint').innerHTML = `憑直覺選出 <b>${need}</b> 張牌（還差 <b id="needCount">${need}</b> 張）`;
+  $('ritualHint').innerHTML = t('pick_n', { n: need });
   const row = $('fanRow'); row.innerHTML = '';
   for (let i = 0; i < 78; i++) {
     const d = document.createElement('div');
     d.className = 'fan-card card-back-face';
     d.textContent = '✦';
-    const t = (i - 38.5) / 38.5;                 // -1 ~ 1
-    d.style.setProperty('--arc', (t * t * 26).toFixed(1)); // 弧形
-    d.style.setProperty('--tilt', (t * 7).toFixed(2));
+    const p = (i - 38.5) / 38.5;                 // -1 ~ 1
+    d.style.setProperty('--arc', (p * p * 26).toFixed(1)); // 弧形
+    d.style.setProperty('--tilt', (p * 7).toFixed(2));
     d.innerHTML = '✦<span class="pick-no"></span>';
     d.addEventListener('click', () => {
       const at = pickedIdx.indexOf(i);
@@ -495,7 +494,7 @@ function showFan() {
       const left = need - pickedIdx.length;
       const nc = document.getElementById('needCount'); if (nc) nc.textContent = left;
       $('flipBtn').disabled = left !== 0;
-      if (left === 0) $('ritualHint').innerHTML = '都選好了 ✨ 準備翻牌';
+      if (left === 0) $('ritualHint').textContent = t('pick_done');
     });
     row.appendChild(d);
   }
@@ -509,7 +508,7 @@ $('flipBtn').addEventListener('click', () => {
   curDraws = drawCards(spread.count);
   $('fanWrap').style.display = 'none';
   $('revealWrap').style.display = 'block';
-  $('ritualHint').innerHTML = '牌翻開了…';
+  $('ritualHint').textContent = t('flipping');
   const row = $('revealRow'); row.innerHTML = '';
   curDraws.forEach((d, i) => {
     const zh = cardZhName(d.card);
@@ -520,7 +519,7 @@ $('flipBtn').addEventListener('click', () => {
         <div class="flip-face card-back-face" style="font-size:22px;">✦</div>
         <div class="flip-face flip-front ${d.upright ? '' : 'rev'}">
           <img src="${cardImg(d.card.n)}" alt="${zh}">
-          <div class="f-tag">${spread.positions[i]}・${zh}<br><span class="${d.upright ? 'o-up' : 'o-rev'}">${d.upright ? '正位' : '逆位'}</span></div>
+          <div class="f-tag">${spread.positions[i]}・${zh}<br><span class="${d.upright ? 'o-up' : 'o-rev'}">${d.upright ? t('upright') : t('reversed')}</span></div>
         </div>
       </div>`;
     row.appendChild(el);
@@ -545,8 +544,8 @@ function showResult() {
       <div>
         <div class="pos-label">${spread.positions[i].toUpperCase()} · ${spread.roles[i]}</div>
         <div class="card-name">${cardZhName(d.card)}
-          <span class="orient ${d.upright ? 'up' : 'rev'}">${d.upright ? '正位' : '逆位'}</span></div>
-        <div class="kw">關鍵字：${keywordsOf(d.card, d.upright)}</div>
+          <span class="orient ${d.upright ? 'up' : 'rev'}">${d.upright ? t('upright') : t('reversed')}</span></div>
+        <div class="kw">${t('keywords')}：${keywordsOf(d.card, d.upright)}</div>
         <div class="meaning">${meaningOf(d.card, d.upright)}</div>
       </div>
     </div>`).join('');
@@ -554,7 +553,7 @@ function showResult() {
   $('verdictTag').textContent = sum.label;
   $('verdictTag').className = 'verdict ' + sum.tone;
   $('synthText').textContent = sum.text;
-  $('adviceText').innerHTML = '💡 <b>建議</b>　' + sum.advice;
+  $('adviceText').innerHTML = '💡 <b>' + t('advice') + '</b>　' + sum.advice;
   resetOracle(sum.tone);
   myReads = readCount();
   $('deepBox').classList.remove('show');
@@ -573,17 +572,25 @@ function nowStr() {
 // 成功就多出一塊；額度用完、出錯、太慢，一律安靜收掉，訪客看不到任何錯誤訊息。
 function buildVisitorPrompt(sum) {
   const spread = SPREADS[curSpread];
+  const cards = curDraws.map((d, i) =>
+    (i + 1) + '. ' + spread.positions[i] + ' (' + spread.roles[i] + ') — '
+    + cardZhName(d.card) + ' ' + (d.upright ? t('upright') : t('reversed')) + '\n   '
+    + meaningOf(d.card, d.upright)).join('\n');
+
+  if (LANG !== 'zh' && typeof I18N_AI_PROMPT !== 'undefined' && I18N_AI_PROMPT[LANG]) {
+    return I18N_AI_PROMPT[LANG]
+      .split('{q}').join(fullQuestion() || '—')
+      .split('{s}').join(spread.name + ' — ' + spread.desc)
+      .split('{cards}').join(cards)
+      .split('{v}').join(sum.label + '　' + sum.text);
+  }
   const L = [];
   L.push('你是一位溫暖而誠實的塔羅解讀者。請根據以下抽牌結果，寫一段解讀給問卜的人看。');
   L.push('');
   L.push('【問題】' + (fullQuestion() || '（沒有特定問題，想看整體狀態）'));
   L.push('【牌陣】' + spread.name + ' —— ' + spread.desc);
   L.push('【抽到的牌與牌義（只能依據這些，不可以自己發明牌義）】');
-  curDraws.forEach((d, i) => {
-    L.push((i + 1) + '. 位置「' + spread.positions[i] + '」（' + spread.roles[i] + '）：'
-      + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
-    L.push('   牌義：' + meaningOf(d.card, d.upright));
-  });
+  L.push(cards);
   L.push('【牌面整體判定】' + sum.label + '　' + sum.text);
   L.push('');
   L.push('【要求】');
@@ -622,20 +629,21 @@ function resetOracle(verdictTone) {
   $('oracleInvite').style.display = 'block';
   $('oracleCard').classList.remove('show');
   $('oracleQ').textContent = verdictTone === 'neg'
-    ? '牌面看起來卡卡的。要不要抽三張神諭卡，看看現在可以做什麼？'
-    : '想要幾句可以馬上執行的指引嗎？';
+    ? t('oracle_q_neg') : t('oracle_q');
 }
 $('oracleBtn').addEventListener('click', () => {
   curOracle = drawOracle(3);
-  $('oracleList').innerHTML = curOracle.map(o => `
+  $('oracleList').innerHTML = curOracle.map(o => {
+    const x = oracleText(o);
+    return `
     <div class="o-item">
-      <div class="oi-img"><img src="${oracleImg(o.n)}" alt="${o.title}" loading="lazy"></div>
+      <div class="oi-img"><img src="${oracleImg(o.n)}" alt="${x.title}" loading="lazy"></div>
       <div>
-        <div class="oi-title">${o.n}. ${o.title}</div>
+        <div class="oi-title">${o.n}. ${x.title}</div>
         <div class="oi-de">${o.de}</div>
-        <div class="oi-msg">${o.msg}</div>
+        <div class="oi-msg">${x.msg}</div>
       </div>
-    </div>`).join('');
+    </div>`; }).join('');
   $('oracleInvite').style.display = 'none';
   $('oracleCard').classList.add('show');
   renderTip();
@@ -731,7 +739,7 @@ let myReads = 0;
 function renderTip() {
   if (typeof TIP_URL === 'undefined' || !TIP_URL) return;
   if (!(curOracle || myReads >= 3)) { $('tipBox').classList.remove('show'); return; }
-  $('tipMsg').textContent = (typeof TIP_TEXT !== 'undefined' && TIP_TEXT) ? TIP_TEXT : '這次的牌如果有幫到你，可以請我喝杯咖啡 ☕';
+  $('tipMsg').textContent = (LANG === 'zh' && typeof TIP_TEXT !== 'undefined' && TIP_TEXT) ? TIP_TEXT : t('tip_msg');
   $('tipBtn').href = TIP_URL;
   $('tipBox').classList.add('show');
 }
@@ -739,8 +747,8 @@ function renderTip() {
 // ===== 複製文字 =====
 $('copyBtn').addEventListener('click', () => {
   const txt = buildShareText(fullQuestion(), SPREADS[curSpread], curDraws, nowStr(), curOracle);
-  copyText(txt).then(() => showToast('已複製 📋'))
-    .catch(() => showToast('複製失敗，請截圖分享'));
+  copyText(txt).then(() => showToast(t('copied')))
+    .catch(() => showToast(t('copy_fail')));
 });
 function copyText(txt) {
   if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(txt);
@@ -793,7 +801,7 @@ async function renderShareBlob() {
   g.fillText('Moonlight Tarot', pad, 118);
   g.font = '400 28px "DM Sans","PingFang TC",sans-serif';
   g.fillStyle = '#b9a8d6';
-  g.fillText('月光塔羅 · ' + spread.name + ' · ' + nowStr(), pad, 168);
+  g.fillText((LANG === 'zh' ? '月光塔羅 · ' : '') + spread.name + ' · ' + nowStr(), pad, 168);
 
   let y = 225;
   g.fillStyle = '#e8dfc9'; g.font = '400 32px "DM Sans","PingFang TC",sans-serif';
@@ -822,7 +830,7 @@ async function renderShareBlob() {
     g.fillStyle = '#f0e9db'; g.font = '600 27px "DM Sans","PingFang TC",sans-serif';
     g.fillText(cardZhName(d.card), x + cw / 2, y + ch + 80);
     g.fillStyle = d.upright ? '#9fd8b7' : '#f0a8b0'; g.font = '500 23px "DM Sans","PingFang TC",sans-serif';
-    g.fillText(d.upright ? '正位' : '逆位', x + cw / 2, y + ch + 112);
+    g.fillText(d.upright ? t('upright') : t('reversed'), x + cw / 2, y + ch + 112);
     g.textAlign = 'left';
     x += cw + gap;
   });
@@ -841,7 +849,7 @@ function downloadBlob(blob) {
   a.href = URL.createObjectURL(blob);
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  showToast('圖片已儲存 🖼️');
+  showToast(t('img_saved'));
 }
 
 $('imgBtn').addEventListener('click', () => {
@@ -850,7 +858,7 @@ $('imgBtn').addEventListener('click', () => {
   if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
     try {
       navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
-        .then(() => showToast('圖片已複製 🖼️'))
+        .then(() => showToast(t('img_copied')))
         .catch(() => blobPromise.then(downloadBlob));
       return;
     } catch (e) { /* 落到下面下載 */ }
@@ -879,6 +887,18 @@ $('againBtn').addEventListener('click', () => {
   document.querySelectorAll('.setup-panel').forEach(p => p.style.display = 'block');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
+
+// ===== 套用語言 =====
+function applyI18n() {
+  document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll('[data-th]').forEach(el => { el.innerHTML = t(el.dataset.th); });
+  document.querySelectorAll('[data-tph]').forEach(el => { el.placeholder = t(el.dataset.tph); });
+  document.documentElement.lang = LANG === 'zh' ? 'zh-Hant' : LANG;
+  document.querySelectorAll('.lang-switch button').forEach(b => b.classList.toggle('on', b.dataset.l === LANG));
+}
+document.querySelectorAll('.lang-switch button').forEach(b =>
+  b.addEventListener('click', () => setLang(b.dataset.l)));
+applyI18n();
 
 renderSpreads();
 renderTemplates();

@@ -161,6 +161,7 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
         <button class="btn secondary" id="toggleDoneBtn">👁 顯示已解讀</button>
         <button class="btn secondary" id="forgetKeyBtn" style="color:var(--danger);">🔒 清除鑰匙</button>
       </div>
+      <input type="text" id="inboxSearch" placeholder="🔍 搜尋名字、問題、牌名、地區、日期…" style="margin-top:12px;">
       <div id="inboxMsg" class="text-soft" style="margin-top:10px;"></div>
       <div id="inboxList" style="margin-top:12px;"></div>
     </div>
@@ -529,6 +530,7 @@ $('forgetKeyBtn').addEventListener('click', () => {
   refreshKeyUI(); showToast('已清除 🔒');
 });
 $('refreshInboxBtn').addEventListener('click', loadInbox);
+$('inboxSearch').addEventListener('input', renderInbox);
 $('toggleDoneBtn').addEventListener('click', () => {
   showDone = !showDone;
   $('toggleDoneBtn').textContent = showDone ? '👁 隱藏已解讀' : '👁 顯示已解讀';
@@ -557,8 +559,21 @@ async function loadInbox() {
 }
 
 function renderInbox() {
-  const rows = inboxRows.filter(r => showDone || !r.done);
-  if (!rows.length) { $('inboxList').innerHTML = '<div class="text-soft" style="text-align:center;padding:22px 0;">目前沒有待解讀的紀錄 🌙</div>'; return; }
+  const q = ($('inboxSearch').value || '').trim().toLowerCase();
+  const rows = inboxRows
+    .filter(r => showDone || !r.done)
+    .filter(r => {
+      if (!q) return true;
+      const hay = [r.time, r.visitor, r.name, r.ip, r.loc, r.spread, r.question, r.cardsText, r.note]
+        .join(' ').toLowerCase();
+      return q.split(/\s+/).every(w => hay.includes(w));   // 空白分隔＝且
+    });
+  if (!rows.length) {
+    $('inboxList').innerHTML = '<div class="text-soft" style="text-align:center;padding:22px 0;">'
+      + (q ? '找不到符合「' + q + '」的紀錄 🌫️' : '目前沒有待解讀的紀錄 🌙') + '</div>';
+    return;
+  }
+  if (q) $('inboxMsg').textContent = '符合「' + q + '」的有 ' + rows.length + ' 筆';
   $('inboxList').innerHTML = rows.map(r => `
     <div class="inbox-item ${r.done ? 'done' : ''}" data-row="${r.row}">
       <div class="i-top">

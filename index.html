@@ -556,6 +556,7 @@ function showResult() {
   $('synthText').textContent = sum.text;
   $('adviceText').innerHTML = '💡 <b>建議</b>　' + sum.advice;
   resetOracle(sum.tone);
+  myReads = readCount();
   $('deepBox').classList.remove('show');
   $('deepBody').textContent = '';
   scheduleLog();
@@ -637,6 +638,7 @@ $('oracleBtn').addEventListener('click', () => {
     </div>`).join('');
   $('oracleInvite').style.display = 'none';
   $('oracleCard').classList.add('show');
+  renderTip();
   flushLog();     // 神諭卡抽好了，這時候才把「唯一的那一筆」送出去
 });
 
@@ -716,8 +718,19 @@ window.addEventListener('pagehide', beaconLog);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') beaconLog(); });
 
 // ===== 贊助區（沒設定連結就完全不出現）=====
+function readCount() {
+  try {
+    const n = parseInt(localStorage.getItem('ml_reads') || '0', 10) + 1;
+    localStorage.setItem('ml_reads', String(n));
+    return n;
+  } catch (e) { return 1; }
+}
+let myReads = 0;
+
+// 贊助區不是每次都出現：等神諭卡抽過、或她已經回來第三次，才開這個口
 function renderTip() {
   if (typeof TIP_URL === 'undefined' || !TIP_URL) return;
+  if (!(curOracle || myReads >= 3)) { $('tipBox').classList.remove('show'); return; }
   $('tipMsg').textContent = (typeof TIP_TEXT !== 'undefined' && TIP_TEXT) ? TIP_TEXT : '這次的牌如果有幫到你，可以請我喝杯咖啡 ☕';
   $('tipBtn').href = TIP_URL;
   $('tipBox').classList.add('show');

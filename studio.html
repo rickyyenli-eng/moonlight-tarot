@@ -59,6 +59,9 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
 .inbox-item .i-cards { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
 .inbox-item .i-acts { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
 .inbox-item .i-acts .btn { padding: 7px 12px; font-size: 12px; }
+.btn.ai { background: linear-gradient(135deg, #4a3868, #2b2340); color: #f0e9db; }
+.btn.ai:hover { background: linear-gradient(135deg, #5c477f, #372c52); }
+.btn.ai:disabled { opacity: .5; }
 .key-box { background: #fffdf8; border: 1px dashed var(--accent); border-radius: var(--radius); padding: 14px; }
 </style>
 </head>
@@ -124,9 +127,14 @@ label.fl { display: block; font-size: 12px; color: var(--text-muted); margin-bot
       <textarea id="reportOut"></textarea>
       <div class="io-row">
         <button class="btn" id="copyReportBtn">📋 複製報告</button>
-        <button class="btn secondary" id="regenBtn">🎲 換個說法重生成</button>
+        <button class="btn secondary" id="regenBtn">🎲 換個說法</button>
         <button class="btn gold" id="saveBtn">💾 儲存到紀錄</button>
       </div>
+      <div class="io-row">
+        <button class="btn ai" id="aiBtn">✨ AI 潤稿</button>
+        <button class="btn secondary" id="undoAiBtn" style="display:none;">↩ 還原成草稿</button>
+      </div>
+      <div class="text-soft" id="aiMsg" style="margin-top:8px;"></div>
     </div>
   </section>
 
@@ -289,15 +297,93 @@ function currentMeta() {
     date: $('dateInput').value.trim() || todayStr(),
   };
 }
+let reportVariant = 0;
+let draftBackup = '';
+
 function genReport() {
-  $('reportOut').value = buildReport(currentMeta());
+  $('reportOut').value = buildReport(Object.assign(currentMeta(), { variant: reportVariant }));
   $('reportPanel').style.display = 'block';
   $('reportOut').style.height = 'auto';
   $('reportOut').style.height = ($('reportOut').scrollHeight + 10) + 'px';
+  $('aiMsg').textContent = '';
+  $('undoAiBtn').style.display = 'none';
+  draftBackup = '';
   $('reportPanel').scrollIntoView({ behavior: 'smooth' });
 }
-$('genBtn').addEventListener('click', genReport);
-$('regenBtn').addEventListener('click', genReport);
+$('genBtn').addEventListener('click', () => { reportVariant = 0; genReport(); });
+$('regenBtn').addEventListener('click', () => { reportVariant++; genReport(); });
+
+// ===== AI 潤稿 =====
+// 金鑰放在 Apps Script 裡，瀏覽器永遠拿不到；呼叫時帶 READ_KEY，所以只有你叫得動
+function buildAiPrompt() {
+  const m = currentMeta();
+  const spread = SPREADS[m.spreadId];
+  const L = [];
+  L.push('你是一位溫暖而誠實的塔羅解讀者，正在幫朋友解牌。請根據以下資料，寫出一份完整的解讀。');
+  L.push('');
+  if (m.who) L.push('【對方稱呼】' + m.who);
+  L.push('【問題】' + (m.question || '（沒有特定問題，想看整體狀態）'));
+  L.push('【牌陣】' + spread.name + ' —— ' + spread.desc);
+  L.push('');
+  L.push('【抽到的牌與牌義（請嚴格依據這些牌義，不要自己發明）】');
+  m.draws.forEach((d, i) => {
+    L.push((i + 1) + '. 位置「' + spread.positions[i] + '」（' + spread.roles[i] + '）');
+    L.push('   ' + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
+    L.push('   牌義：' + meaningOf(d.card, d.upright));
+  });
+  L.push('');
+  L.push('【我已經整理好的草稿，請以它為基礎改寫得更流暢完整】');
+  L.push(draftBackup || $('reportOut').value);
+  L.push('');
+  L.push('【要求】');
+  L.push('1. 分成兩段：先逐張說明每張牌在它的位置上代表什麼，再把所有牌湊起來，針對問題給一個明確的答案。');
+  L.push('2. 誠實。牌面顯示阻力就直說，但一定要給出可以做的事，不要只是安慰。');
+  L.push('3. 語氣溫暖、口語，像朋友在講話。不要用「親愛的」「宇宙正在」這類浮誇字眼。');
+  L.push('4. 繁體中文，700～1000 字。');
+  L.push('5. 直接輸出解讀內容，不要有開場白、不要重複題目、不要加註解。');
+  return L.join('\n');
+}
+
+$('aiBtn').addEventListener('click', async () => {
+  if (typeof CLOUD_URL === 'undefined' || !CLOUD_URL) { showToast('還沒設定後端'); return; }
+  if (!readKey()) { showToast('請先到「☁️ 收件匣」輸入讀取鑰匙'); switchTab('inbox'); return; }
+  if (!$('reportOut').value.trim()) { showToast('先產生草稿再潤稿'); return; }
+
+  if (!draftBackup) draftBackup = $('reportOut').value;
+  $('aiBtn').disabled = true;
+  $('aiBtn').textContent = '✨ 潤稿中…';
+  $('aiMsg').textContent = '交給 AI 改寫中，大約 5～15 秒…';
+  try {
+    const res = await fetch(CLOUD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'ai', key: readKey(), prompt: buildAiPrompt() }),
+    });
+    const j = await res.json();
+    if (!j.ok) {
+      $('aiMsg').innerHTML = '❌ ' + j.err;
+    } else {
+      $('reportOut').value = j.text.trim();
+      $('reportOut').style.height = 'auto';
+      $('reportOut').style.height = ($('reportOut').scrollHeight + 10) + 'px';
+      $('undoAiBtn').style.display = 'inline-flex';
+      $('aiMsg').textContent = '✅ 已改寫。記得自己讀過一遍再送出，AI 有時會加油添醋。';
+    }
+  } catch (e) {
+    $('aiMsg').textContent = '❌ 連不上後端，請確認 Apps Script 已用「新版本」重新部署';
+  }
+  $('aiBtn').disabled = false;
+  $('aiBtn').textContent = '✨ AI 潤稿';
+});
+
+$('undoAiBtn').addEventListener('click', () => {
+  if (!draftBackup) return;
+  $('reportOut').value = draftBackup;
+  $('reportOut').style.height = 'auto';
+  $('reportOut').style.height = ($('reportOut').scrollHeight + 10) + 'px';
+  $('undoAiBtn').style.display = 'none';
+  $('aiMsg').textContent = '已還原成規則引擎的草稿';
+});
 
 $('copyReportBtn').addEventListener('click', () => {
   copyText($('reportOut').value).then(() => showToast('報告已複製 📋 回傳給她吧'))

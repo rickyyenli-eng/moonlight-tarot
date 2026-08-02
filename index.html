@@ -171,14 +171,21 @@
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 .oracle-card .o-label { font-size: 11px; letter-spacing: 3px; color: #b9a8d6; margin-bottom: 16px; }
-.o-item { display: flex; gap: 13px; text-align: left; padding: 13px 4px; }
+.o-item { display: flex; gap: 14px; text-align: left; padding: 14px 2px; align-items: flex-start; }
 .o-item + .o-item { border-top: 1px solid rgba(185,168,214,.22); }
-.o-item .oi-emoji { flex: 0 0 34px; font-size: 28px; line-height: 1.25; text-align: center; }
+.o-item .oi-img { flex: 0 0 68px; }
+.o-item .oi-img img {
+  width: 68px; display: block; border-radius: 5px;
+  border: 1px solid var(--gold); box-shadow: 0 3px 10px rgba(0,0,0,.4);
+}
 .o-item .oi-title {
   font-family: 'Fraunces', Georgia, serif; font-size: 17px; color: var(--gold);
-  letter-spacing: .5px; margin-bottom: 3px;
+  letter-spacing: .5px; margin-bottom: 2px;
 }
+.o-item .oi-de { font-size: 10.5px; color: #9d8fc0; letter-spacing: .5px; margin-bottom: 6px; }
 .o-item .oi-msg { font-size: 13.5px; color: #ede6d8; line-height: 1.75; }
+.oracle-credit { font-size: 10.5px; color: #9d8fc0; line-height: 1.6; margin-top: 14px;
+  padding-top: 12px; border-top: 1px solid rgba(185,168,214,.22); text-align: center; }
 .send-nudge {
   margin-top: 14px; text-align: center; font-size: 13px; color: var(--text-muted);
   background: #fffdf8; border: 1px dashed var(--accent); border-radius: 10px; padding: 12px;
@@ -283,6 +290,11 @@
         <div class="oracle-card" id="oracleCard">
           <div class="o-label">✦ 給你的三個行動指引 ✦</div>
           <div id="oracleList"></div>
+          <div class="oracle-credit">
+            牌圖：《Das Spiel der Hofnung》（希望之戲，1799，J. K. Hechtel）—— Lenormand 神諭牌的原始祖本，<br>
+            著作權已到期並進入公有領域 · 圖源 Wikimedia Commons<br>
+            牌義以傳統含意為基礎改寫，僅供娛樂與自我探索參考
+          </div>
         </div>
       </div>
 
@@ -303,7 +315,7 @@
 
   <div class="footer-note">
     塔羅是與內心對話的鏡子，最終的答案永遠在你自己手上 ✨<br>
-    <span style="font-size:10.5px;">為了提供解牌服務，本站會記錄抽牌的時間、牌面與連線資訊（IP／地區）。不會記錄姓名或聯絡方式。<br>牌圖：1909 年原版韋特塔羅（Rider–Waite–Smith，Pamela Colman Smith 繪），已進入公有領域 · 圖源 Wikimedia Commons<br>本站占卜內容僅供娛樂與自我探索參考</span><br>
+    <span style="font-size:10.5px;">為了提供解牌服務，本站會記錄抽牌的時間、牌面與連線資訊（IP／地區）。不會記錄姓名或聯絡方式。<br>塔羅牌圖：1909 年原版韋特塔羅（Rider–Waite–Smith，Pamela Colman Smith 繪）· 神諭牌圖：《Das Spiel der Hofnung》（1799）<br>兩者著作權皆已到期並進入公有領域 · 圖源 Wikimedia Commons<br>本站占卜內容僅供娛樂與自我探索參考</span><br>
     Moonlight Tarot · <a href="studio.html" title="解牌工作台">🗝️</a>
   </div>
 </div>
@@ -616,8 +628,12 @@ $('oracleBtn').addEventListener('click', () => {
   curOracle = drawOracle(3);
   $('oracleList').innerHTML = curOracle.map(o => `
     <div class="o-item">
-      <div class="oi-emoji">${o.emoji}</div>
-      <div><div class="oi-title">${o.title}</div><div class="oi-msg">${o.msg}</div></div>
+      <div class="oi-img"><img src="${oracleImg(o.n)}" alt="${o.title}" loading="lazy"></div>
+      <div>
+        <div class="oi-title">${o.n}. ${o.title}</div>
+        <div class="oi-de">${o.de}</div>
+        <div class="oi-msg">${o.msg}</div>
+      </div>
     </div>`).join('');
   $('oracleInvite').style.display = 'none';
   $('oracleCard').classList.add('show');

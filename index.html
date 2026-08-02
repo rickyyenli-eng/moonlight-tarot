@@ -142,6 +142,16 @@
   font-size: 13.5px; line-height: 1.7; color: #5c4a33;
 }
 /* 神諭卡 */
+/* AI 深入解讀：成功才出現，失敗完全隱形 */
+.deep-box { display: none; margin-top: 14px; border-radius: 12px; padding: 18px 16px;
+  background: linear-gradient(135deg, #f7f1e6 0%, #efe4d2 100%); border: 1px solid var(--accent-soft); }
+.deep-box.show { display: block; }
+.deep-head { font-size: 12px; letter-spacing: 2px; color: #8a6e4e; margin-bottom: 10px; }
+.deep-body { font-size: 14px; line-height: 1.95; color: #4a3a28; white-space: pre-wrap; }
+.deep-loading { display: none; margin-top: 14px; text-align: center; font-size: 12.5px; color: var(--text-soft); }
+.deep-loading.show { display: block; }
+.deep-loading .dots::after { content: '…'; animation: dots 1.4s steps(4,end) infinite; }
+@keyframes dots { 0%{content:''} 25%{content:'·'} 50%{content:'··'} 75%{content:'···'} }
 .oracle-box { margin-top: 14px; }
 .oracle-invite {
   text-align: center; background: #fffdf8; border: 1px dashed var(--accent);
@@ -258,6 +268,12 @@
         <div class="advice-line" id="adviceText"></div>
         <div style="font-size:11.5px; color:#9a8a70; margin-top:10px;">牌面怎麼說就怎麼寫，不修飾。想要逐張深入的完整解讀，建議尋求專業的塔羅師 🌙</div>
       </div>
+      <div class="deep-loading" id="deepLoading"><span class="dots">正在為你寫一份更完整的解讀</span></div>
+      <div class="deep-box" id="deepBox">
+        <div class="deep-head">✦ 完整解讀 ✦</div>
+        <div class="deep-body" id="deepBody"></div>
+      </div>
+
       <div class="oracle-box" id="oracleBox">
         <div class="oracle-invite" id="oracleInvite">
           <div class="o-q" id="oracleQ"></div>
@@ -528,13 +544,62 @@ function showResult() {
   $('synthText').textContent = sum.text;
   $('adviceText').innerHTML = '💡 <b>建議</b>　' + sum.advice;
   resetOracle(sum.tone);
+  $('deepBox').classList.remove('show');
+  $('deepBody').textContent = '';
   scheduleLog();
+  fetchDeepReading(sum);
   renderTip();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function nowStr() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// ===== AI 完整解讀 =====
+// 成功就多出一塊；額度用完、出錯、太慢，一律安靜收掉，訪客看不到任何錯誤訊息。
+function buildVisitorPrompt(sum) {
+  const spread = SPREADS[curSpread];
+  const L = [];
+  L.push('你是一位溫暖而誠實的塔羅解讀者。請根據以下抽牌結果，寫一段解讀給問卜的人看。');
+  L.push('');
+  L.push('【問題】' + (fullQuestion() || '（沒有特定問題，想看整體狀態）'));
+  L.push('【牌陣】' + spread.name + ' —— ' + spread.desc);
+  L.push('【抽到的牌與牌義（只能依據這些，不可以自己發明牌義）】');
+  curDraws.forEach((d, i) => {
+    L.push((i + 1) + '. 位置「' + spread.positions[i] + '」（' + spread.roles[i] + '）：'
+      + cardZhName(d.card) + '　' + (d.upright ? '正位' : '逆位'));
+    L.push('   牌義：' + meaningOf(d.card, d.upright));
+  });
+  L.push('【牌面整體判定】' + sum.label + '　' + sum.text);
+  L.push('');
+  L.push('【要求】');
+  L.push('1. 先用兩三句把每張牌在它的位置上代表什麼講清楚，再把牌湊起來針對問題給一個明確的答案。');
+  L.push('2. 誠實。判定偏逆就直說不順，但一定要給出可以做的事，不要只是安慰。');
+  L.push('3. 語氣溫暖口語，像朋友在講話。不要用「親愛的」「宇宙正在」這類浮誇字眼。');
+  L.push('4. 不要提供醫療、法律、投資的具體建議，也不要預言生死或疾病。');
+  L.push('5. 繁體中文，400～600 字，直接輸出內容，不要開場白也不要標題。');
+  return L.join('\n');
+}
+
+async function fetchDeepReading(sum) {
+  if (typeof CLOUD_URL === 'undefined' || !CLOUD_URL) return;
+  $('deepLoading').classList.add('show');
+  const giveUp = setTimeout(() => $('deepLoading').classList.remove('show'), 12000);
+  try {
+    const res = await fetch(CLOUD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'reading', key: CLOUD_WRITE_KEY, visitor: visitorId(), prompt: buildVisitorPrompt(sum) }),
+    });
+    const j = await res.json();
+    if (j && j.ok && j.text) {
+      $('deepBody').textContent = j.text.trim();
+      $('deepBox').classList.add('show');
+    }
+  } catch (e) { /* 完全靜默 */ }
+  clearTimeout(giveUp);
+  $('deepLoading').classList.remove('show');
 }
 
 // ===== 神諭卡（只能抽一次，避免變成「再抽求好結果」）=====
